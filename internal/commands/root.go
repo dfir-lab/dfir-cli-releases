@@ -54,6 +54,15 @@ Authenticate with an API key from https://dfir-lab.ch and start investigating.`,
 				output.SetNoColor(true)
 			}
 
+			// Auto-detect non-TTY: disable colors and switch to JSON output.
+			if !output.IsTerminal() {
+				output.SetNoColor(true)
+				// Auto-switch to JSON if the user didn't explicitly choose a format.
+				if f := cmd.Flags().Lookup("output"); f != nil && !f.Changed {
+					_ = f.Value.Set("json")
+				}
+			}
+
 			return nil
 		},
 		Version: version.Short(),

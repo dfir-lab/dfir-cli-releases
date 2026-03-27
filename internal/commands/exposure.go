@@ -218,14 +218,12 @@ func runSingleExposureScan(
 // printExposureTable renders the human-friendly table output.
 func printExposureTable(result *client.ExposureScanResponse, resp *client.Response) {
 	fmt.Println()
-	output.Bold.Printf("Exposure Scan: %s\n", result.Target)
+	output.PrintHeader(fmt.Sprintf("Exposure Scan: %s", result.Target))
 	fmt.Println()
 
 	// Risk level with color.
-	riskColor := exposureRiskColor(result.RiskLevel)
-	fmt.Printf("  Risk Level:  ")
-	riskColor.Printf("%s", strings.ToUpper(result.RiskLevel))
-	fmt.Printf(" (score: %d/100)\n", result.RiskScore)
+	fmt.Printf("  Risk Level:  %s\n", output.RiskBadge(result.RiskLevel))
+	fmt.Printf("  Risk Score:  %s\n", output.ScoreBar(result.RiskScore, 100))
 
 	fmt.Printf("  Status:      %s\n", result.Status)
 
@@ -245,7 +243,17 @@ func printExposureTable(result *client.ExposureScanResponse, resp *client.Respon
 		if ssl, ok := result.Results["ssl"]; ok {
 			if sslMap, ok := ssl.(map[string]interface{}); ok {
 				if grade, ok := sslMap["grade"]; ok {
-					fmt.Printf("  SSL Grade:   %v\n", grade)
+					gradeStr := fmt.Sprintf("%v", grade)
+					var gradeColor *color.Color
+					switch {
+					case gradeStr == "A" || gradeStr == "A+":
+						gradeColor = output.Green
+					case gradeStr == "B":
+						gradeColor = output.Yellow
+					default:
+						gradeColor = output.Red
+					}
+					fmt.Printf("  SSL Grade:   %s\n", gradeColor.Sprint(gradeStr))
 				}
 			}
 		}
@@ -260,10 +268,7 @@ func printExposureTable(result *client.ExposureScanResponse, resp *client.Respon
 	fmt.Println()
 
 	// Credits.
-	fmt.Printf("  Credits: %d used, %d remaining\n",
-		resp.Meta.CreditsUsed,
-		resp.Meta.CreditsRemaining,
-	)
+	output.PrintCreditsFooter(resp.Meta.CreditsUsed, resp.Meta.CreditsRemaining)
 
 	// Suggest JSON for full details.
 	if result.Results != nil && len(result.Results) > 0 {
@@ -272,20 +277,6 @@ func printExposureTable(result *client.ExposureScanResponse, resp *client.Respon
 	}
 
 	fmt.Println()
-}
-
-// exposureRiskColor returns the appropriate color printer for a risk level.
-func exposureRiskColor(level string) *color.Color {
-	switch strings.ToLower(strings.TrimSpace(level)) {
-	case "critical", "high":
-		return output.Red
-	case "medium":
-		return output.Yellow
-	case "low", "none", "":
-		return output.Green
-	default:
-		return output.Dim
-	}
 }
 
 // exposureExitCode maps a risk level to a CLI exit code.

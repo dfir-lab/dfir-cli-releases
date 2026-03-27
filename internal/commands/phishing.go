@@ -271,9 +271,10 @@ func renderPhishingTable(r *client.PhishingAnalyzeResponse, aiVerdict *client.AI
 	fmt.Println()
 
 	// Verdict line.
-	verdictStr := fmt.Sprintf("%s (score: %d/100)", strings.ToUpper(r.Verdict.Level), r.Verdict.Score)
+	verdictStr := fmt.Sprintf("%s", strings.ToUpper(r.Verdict.Level))
 	vc := phishingLevelColor(r.Verdict.Level)
 	fmt.Printf("  Verdict:    %s\n", vc.Sprint(verdictStr))
+	fmt.Printf("  Score:      %s\n", output.ScoreBar(r.Verdict.Score, 100))
 	if r.Verdict.Summary != "" {
 		fmt.Printf("  Summary:    %s\n", r.Verdict.Summary)
 	}
@@ -335,9 +336,7 @@ func renderPhishingTable(r *client.PhishingAnalyzeResponse, aiVerdict *client.AI
 		fmt.Println()
 		output.Bold.Println("  Suspicious Indicators:")
 
-		t := table.NewWriter()
-		t.SetOutputMirror(os.Stdout)
-		t.SetStyle(table.StyleLight)
+		t := output.NewTable()
 		t.Style().Options.DrawBorder = false
 		t.Style().Options.SeparateHeader = true
 		t.Style().Options.SeparateRows = false
@@ -346,7 +345,7 @@ func renderPhishingTable(r *client.PhishingAnalyzeResponse, aiVerdict *client.AI
 		t.AppendHeader(table.Row{"Category", "Description", "Severity"})
 
 		for _, si := range r.SuspiciousIndicators {
-			t.AppendRow(table.Row{si.Category, si.Description, phishingSeverityStr(si.Severity)})
+			t.AppendRow(table.Row{si.Category, si.Description, output.SeverityBadge(si.Severity)})
 		}
 
 		t.Render()
@@ -357,9 +356,7 @@ func renderPhishingTable(r *client.PhishingAnalyzeResponse, aiVerdict *client.AI
 		fmt.Println()
 		output.Bold.Println("  Extracted IOCs:")
 
-		t := table.NewWriter()
-		t.SetOutputMirror(os.Stdout)
-		t.SetStyle(table.StyleLight)
+		t := output.NewTable()
 		t.Style().Options.DrawBorder = false
 		t.Style().Options.SeparateHeader = true
 		t.Style().Options.SeparateRows = false
@@ -372,8 +369,7 @@ func renderPhishingTable(r *client.PhishingAnalyzeResponse, aiVerdict *client.AI
 			if verdict == "" {
 				verdict = "-"
 			}
-			iocVC := phishingLevelColor(verdict)
-			t.AppendRow(table.Row{ioc.Type, ioc.Value, iocVC.Sprint(strings.ToUpper(verdict))})
+			t.AppendRow(table.Row{ioc.Type, ioc.Value, output.VerdictBadge(verdict)})
 		}
 
 		t.Render()
@@ -391,8 +387,7 @@ func renderPhishingTable(r *client.PhishingAnalyzeResponse, aiVerdict *client.AI
 	// Credits footer.
 	if resp != nil {
 		fmt.Println()
-		output.Dim.Printf("  Credits: %d used, %d remaining\n",
-			resp.Meta.CreditsUsed, resp.Meta.CreditsRemaining)
+		output.PrintCreditsFooter(resp.Meta.CreditsUsed, resp.Meta.CreditsRemaining)
 	}
 
 	fmt.Println()
@@ -400,33 +395,10 @@ func renderPhishingTable(r *client.PhishingAnalyzeResponse, aiVerdict *client.AI
 
 // printPhishingAuthField prints a single authentication result field with color.
 func printPhishingAuthField(label, value string) {
-	upper := strings.ToUpper(strings.TrimSpace(value))
-	var c *color.Color
-	switch {
-	case strings.Contains(upper, "PASS"):
-		c = output.Green
-	case strings.Contains(upper, "FAIL"):
-		c = output.Red
-	case upper == "NONE" || upper == "":
-		c = output.Dim
-	default:
-		c = output.Yellow
+	if value == "" {
+		value = "none"
 	}
-	fmt.Printf("    %-8s %s\n", label+":", c.Sprint(upper))
-}
-
-// phishingSeverityStr returns the severity string formatted with color.
-func phishingSeverityStr(severity string) string {
-	switch strings.ToLower(severity) {
-	case "high":
-		return output.Red.Sprint("HIGH")
-	case "medium":
-		return output.Yellow.Sprint("MEDIUM")
-	case "low":
-		return output.Dim.Sprint("LOW")
-	default:
-		return strings.ToUpper(severity)
-	}
+	fmt.Printf("    %-10s %s\n", label+":", output.AuthBadge(value))
 }
 
 // phishingLevelColor maps verdict/risk levels to terminal colors. This extends

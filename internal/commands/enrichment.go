@@ -11,7 +11,6 @@ import (
 	"github.com/ForeGuards/dfir-cli/internal/client"
 	"github.com/ForeGuards/dfir-cli/internal/output"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 )
 
@@ -406,8 +405,8 @@ func renderEnrichmentTable(results []client.EnrichmentResult, meta *client.Respo
 
 	// Credits footer.
 	if meta != nil {
-		fmt.Printf("\n  Credits: %d used, %d remaining\n",
-			meta.Meta.CreditsUsed, meta.Meta.CreditsRemaining)
+		fmt.Println()
+		output.PrintCreditsFooter(meta.Meta.CreditsUsed, meta.Meta.CreditsRemaining)
 	}
 
 	return enrichmentExitCode(results)
@@ -416,15 +415,16 @@ func renderEnrichmentTable(results []client.EnrichmentResult, meta *client.Respo
 // printEnrichmentHeader renders the summary block above the provider table.
 func printEnrichmentHeader(r client.EnrichmentResult) {
 	iocLabel := strings.ToUpper(r.Indicator.Type)
-	fmt.Printf("\nIOC Enrichment: %s (%s)\n\n", r.Indicator.Value, iocLabel)
+	fmt.Println()
+	output.PrintHeader(fmt.Sprintf("IOC Enrichment: %s (%s)", r.Indicator.Value, iocLabel))
+	fmt.Println()
 
-	vc := output.VerdictColor(r.Verdict)
-	fmt.Printf("  Verdict:    %s\n", vc.Sprint(strings.ToUpper(r.Verdict)))
-	fmt.Printf("  Score:      %d/100\n", r.Score)
+	output.PrintKeyValueColored("Verdict", strings.ToUpper(r.Verdict), output.VerdictColor(r.Verdict))
+	fmt.Printf("  %-12s %s\n", "Score:", output.ScoreBar(r.Score, 100))
 
 	total := len(r.Providers)
 	flagged := countFlaggedProviders(r.Providers)
-	fmt.Printf("  Consensus:  %d/%d providers flagged\n\n", flagged, total)
+	fmt.Printf("  %-12s %d/%d providers flagged\n\n", "Consensus:", flagged, total)
 }
 
 // countFlaggedProviders returns the number of providers with a malicious or
@@ -447,22 +447,20 @@ func printProviderTable(r client.EnrichmentResult) {
 		return
 	}
 
-	t := table.NewWriter()
-	t.SetOutputMirror(os.Stdout)
-	t.SetStyle(table.StyleLight)
+	t := output.NewTable()
 	t.Style().Options.SeparateRows = false
 	t.Style().Options.DrawBorder = false
-	t.Style().Format.Header = text.FormatDefault
 
 	t.AppendHeader(table.Row{"Provider", "Verdict", "Score", "Details"})
 
 	for name, pr := range r.Providers {
-		vc := output.VerdictColor(pr.Verdict)
+		scoreStr := output.ScoreBar(pr.Score, 100)
+		verdictStr := output.VerdictBadge(pr.Verdict)
 		details := formatProviderDetails(pr.Details)
 		t.AppendRow(table.Row{
 			name,
-			vc.Sprint(strings.ToUpper(pr.Verdict)),
-			fmt.Sprintf("%d", pr.Score),
+			verdictStr,
+			scoreStr,
 			details,
 		})
 	}
