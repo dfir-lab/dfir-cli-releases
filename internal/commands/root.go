@@ -1,0 +1,274 @@
+package commands
+
+import (
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/ForeGuards/dfir-cli/internal/config"
+	"github.com/ForeGuards/dfir-cli/internal/output"
+	"github.com/ForeGuards/dfir-cli/internal/version"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+)
+
+var rootCmd *cobra.Command
+
+func newRootCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "dfir-cli",
+		Short: "DFIR Lab CLI — Threat intelligence from the command line",
+		Long: `DFIR Lab CLI wraps the DFIR Platform API to bring threat intelligence
+directly into your terminal. Analyze phishing campaigns, scan for credential
+exposures, and enrich indicators of compromise (IOCs) — all from the command line.
+
+Capabilities include:
+  - Phishing analysis: submit and inspect phishing URLs, screenshots, and verdicts
+  - Exposure scanning: search for leaked credentials across breach datasets
+  - IOC enrichment: look up domains, IPs, hashes, and emails against curated threat feeds
+
+Authenticate with an API key from https://dfir-lab.ch and start investigating.`,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		CompletionOptions: cobra.CompletionOptions{
+			DisableDefaultCmd: true,
+		},
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			v, _ := cmd.Flags().GetBool("verbose")
+			q, _ := cmd.Flags().GetBool("quiet")
+			if v && q {
+				return fmt.Errorf("--verbose and --quiet cannot be used together")
+			}
+
+			// Warn when --api-key is passed on the command line.
+			if f := cmd.Flags().Lookup("api-key"); f != nil && f.Changed {
+				fmt.Fprintln(os.Stderr, "Warning: passing --api-key on the command line exposes it in process listings and shell history.")
+				fmt.Fprintln(os.Stderr, "         Prefer: export DFIR_LAB_API_KEY=sk-dfir-...")
+			}
+
+			// Configure color output globally.
+			noColor, _ := cmd.Flags().GetBool("no-color")
+			if noColor || viper.GetBool("no_color") {
+				output.SetNoColor(true)
+			} else if v, ok := os.LookupEnv("NO_COLOR"); ok && v != "" {
+				output.SetNoColor(true)
+			}
+
+			return nil
+		},
+		Version: version.Short(),
+	}
+}
+
+func init() {
+	rootCmd = newRootCmd()
+
+	// Global persistent flags
+	pflags := rootCmd.PersistentFlags()
+
+	pflags.String("api-key", "", "Override API key for this invocation")
+	pflags.String("api-url", "", "Override API base URL (default from config)")
+	pflags.StringP("output", "o", "table", "Output format: table, json, jsonl, csv")
+	pflags.Bool("no-color", false, "Disable colored output")
+	pflags.BoolP("verbose", "v", false, "Show debug information (HTTP requests/responses)")
+	pflags.BoolP("quiet", "q", false, "Minimal output")
+	pflags.Duration("timeout", 60*time.Second, "HTTP request timeout")
+	pflags.StringP("profile", "p", "default", "Named config profile")
+
+	// Bind flags to environment variables via Viper
+	_ = viper.BindPFlag("api_key", pflags.Lookup("api-key"))
+	_ = viper.BindPFlag("api_url", pflags.Lookup("api-url"))
+	_ = viper.BindPFlag("profile", pflags.Lookup("profile"))
+	_ = viper.BindPFlag("timeout", pflags.Lookup("timeout"))
+	_ = viper.BindPFlag("no_color", pflags.Lookup("no-color"))
+
+	_ = viper.BindEnv("api_key", "DFIR_LAB_API_KEY")
+	_ = viper.BindEnv("api_url", "DFIR_LAB_API_URL")
+	_ = viper.BindEnv("profile", "DFIR_LAB_PROFILE")
+	_ = viper.BindEnv("timeout", "DFIR_LAB_TIMEOUT")
+	_ = viper.BindEnv("no_color", "DFIR_LAB_NO_COLOR", "NO_COLOR")
+
+	// Register subcommands — Phase 1
+	rootCmd.AddCommand(NewConfigCmd())
+	rootCmd.AddCommand(NewVersionCmd())
+	rootCmd.AddCommand(NewCompletionCmd())
+
+	// Phase 2 commands
+	rootCmd.AddCommand(NewEnrichmentCmd())
+	rootCmd.AddCommand(NewPhishingCmd())
+	rootCmd.AddCommand(NewExposureCmd())
+	rootCmd.AddCommand(NewCreditsCmd())
+
+	// Custom help template
+	rootCmd.SetUsageTemplate(usageTemplate)
+}
+
+// ---------------------------------------------------------------------------
+// Execute is the single entry-point called by main.go.
+// ---------------------------------------------------------------------------
+
+// Execute runs the root command and returns any error.
+func Execute() error {
+	return rootCmd.Execute()
+}
+
+// ---------------------------------------------------------------------------
+// Global flag access helpers
+// ---------------------------------------------------------------------------
+
+// loadProfileCached loads the config profile, caching the result for the
+// duration of the process. Returns nil if the config file does not exist.
+var cachedProfile *config.Profile
+
+func loadProfile() *config.Profile {
+	if cachedProfile != nil {
+		return cachedProfile
+	}
+	p, err := config.Load(GetProfile())
+	if err != nil {
+		return nil
+	}
+	cachedProfile = p
+	return p
+}
+
+// GetAPIKey returns the API key from flag, env var, or config file (in that order).
+func GetAPIKey() string {
+	// 1. Explicit flag
+	if v := rootCmd.PersistentFlags().Lookup("api-key"); v != nil && v.Changed {
+		return v.Value.String()
+	}
+	// 2. Environment variable
+	if key := viper.GetString("api_key"); key != "" {
+		return key
+	}
+	// 3. Config file profile
+	if p := loadProfile(); p != nil && p.APIKey != "" {
+		return p.APIKey
+	}
+	return ""
+}
+
+// GetAPIURL returns the API base URL from flag, env var, or config file.
+func GetAPIURL() string {
+	// 1. Explicit flag
+	if v := rootCmd.PersistentFlags().Lookup("api-url"); v != nil && v.Changed {
+		return v.Value.String()
+	}
+	// 2. Environment variable
+	if url := viper.GetString("api_url"); url != "" {
+		return url
+	}
+	// 3. Config file profile
+	if p := loadProfile(); p != nil && p.APIURL != "" {
+		return p.APIURL
+	}
+	return "https://dfir-lab.ch/api/v1"
+}
+
+// GetOutputFormat returns the selected output format (table, json, jsonl, csv).
+func GetOutputFormat() string {
+	val, _ := rootCmd.PersistentFlags().GetString("output")
+	return val
+}
+
+// IsVerbose returns true when --verbose / -v is set.
+func IsVerbose() bool {
+	val, _ := rootCmd.PersistentFlags().GetBool("verbose")
+	return val
+}
+
+// IsQuiet returns true when --quiet / -q is set.
+func IsQuiet() bool {
+	val, _ := rootCmd.PersistentFlags().GetBool("quiet")
+	return val
+}
+
+// GetTimeout returns the configured HTTP request timeout.
+func GetTimeout() time.Duration {
+	// 1. Explicit flag
+	if v := rootCmd.PersistentFlags().Lookup("timeout"); v != nil && v.Changed {
+		d, _ := rootCmd.PersistentFlags().GetDuration("timeout")
+		return d
+	}
+	// 2. Environment variable
+	d := viper.GetDuration("timeout")
+	if d != 0 {
+		return d
+	}
+	// 3. Config file profile
+	if p := loadProfile(); p != nil && p.Timeout != 0 {
+		return p.Timeout
+	}
+	return 60 * time.Second
+}
+
+// GetProfile returns the active config profile name.
+func GetProfile() string {
+	if v := rootCmd.PersistentFlags().Lookup("profile"); v != nil && v.Changed {
+		return v.Value.String()
+	}
+	p := viper.GetString("profile")
+	if p == "" {
+		return "default"
+	}
+	return p
+}
+
+// IsNoColor returns true when colored output should be suppressed.
+func IsNoColor() bool {
+	if val, _ := rootCmd.PersistentFlags().GetBool("no-color"); val {
+		return true
+	}
+	if viper.GetBool("no_color") {
+		return true
+	}
+	if v, ok := os.LookupEnv("NO_COLOR"); ok && v != "" {
+		return true
+	}
+	return false
+}
+
+// ---------------------------------------------------------------------------
+// Custom help / usage template
+// ---------------------------------------------------------------------------
+
+var usageTemplate = `Usage:{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} <command> [flags]{{end}}
+{{if not .HasParent}}
+DFIR Lab CLI — Threat intelligence from the command line.
+
+COMMANDS:
+  phishing      Analyse phishing URLs, screenshots, and verdicts
+  exposure      Search for leaked credentials across breach datasets
+  enrichment    Enrich IOCs — domains, IPs, hashes, and emails
+
+ACCOUNT:
+  credits       View and manage API credit balance
+
+CONFIGURATION:
+  config        Manage CLI configuration and profiles
+
+OTHER:
+  version       Show version and build information
+  completion    Generate shell completion scripts
+{{else}}{{if .HasAvailableSubCommands}}
+Available Commands:
+{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}  {{rpad .Name .NamePadding}} {{.Short}}
+{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+FLAGS:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+GLOBAL FLAGS:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}
+{{if not .HasParent}}
+GETTING STARTED:
+  $ dfir-cli config init                         Set up your API key
+  $ dfir-cli enrichment lookup --ip 1.2.3.4      Enrich an IP address
+  $ dfir-cli phishing analyze --url example.com   Analyse a suspicious URL
+  $ dfir-cli exposure scan --domain example.com   Scan for exposures
+
+LEARN MORE:
+  https://dfir-lab.ch/docs
+{{end}}`
