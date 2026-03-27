@@ -1,0 +1,156 @@
+version: 2
+
+project_name: dfir-cli
+
+before:
+  hooks:
+    - go mod tidy
+    - git diff --exit-code go.sum
+
+builds:
+  - id: dfir-cli
+    main: ./cmd/dfir-cli
+    binary: dfir-cli
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/ForeGuards/dfir-cli/internal/version.Version={{.Version}} -X github.com/ForeGuards/dfir-cli/internal/version.Commit={{.Commit}} -X github.com/ForeGuards/dfir-cli/internal/version.Date={{.Date}}
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: default
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - completions/*
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  algorithm: sha256
+
+nfpms:
+  - id: packages
+    package_name: dfir-cli
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    vendor: ForeGuards
+    homepage: https://dfir-lab.ch
+    maintainer: "ForeGuards <info@foreguards.com>"
+    description: "DFIR Lab CLI — digital forensics and incident response toolkit"
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/local/bin
+    contents:
+      - src: ./completions/dfir-cli.bash
+        dst: /usr/share/bash-completion/completions/dfir-cli
+        file_info:
+          mode: 0644
+      - src: ./completions/_dfir-cli
+        dst: /usr/share/zsh/vendor-completions/_dfir-cli
+        file_info:
+          mode: 0644
+      - src: ./completions/dfir-cli.fish
+        dst: /usr/share/fish/vendor_completions.d/dfir-cli.fish
+        file_info:
+          mode: 0644
+
+brews:
+  - repository:
+      owner: ForeGuards
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    name: dfir-cli
+    description: "DFIR Lab CLI — digital forensics and incident response toolkit"
+    homepage: https://dfir-lab.ch
+    license: MIT
+    install: |
+      bin.install "dfir-cli"
+
+      bash_completion.install "completions/dfir-cli.bash" => "dfir-cli"
+      zsh_completion.install "completions/_dfir-cli"
+      fish_completion.install "completions/dfir-cli.fish"
+    test: |
+      system "#{bin}/dfir-cli", "--version"
+
+scoops:
+  - repository:
+      owner: ForeGuards
+      name: scoop-bucket
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    name: dfir-cli
+    description: "DFIR Lab CLI — digital forensics and incident response toolkit"
+    homepage: https://dfir-lab.ch
+    license: MIT
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^Merge"
+      - "^merge"
+      - "^docs"
+      - "^test"
+      - "^refactor"
+      - "^chore"
+      - "^ci"
+  groups:
+    - title: Features
+      regexp: "^.*feat.*$"
+      order: 0
+    - title: Bug Fixes
+      regexp: "^.*fix.*$"
+      order: 1
+    - title: Others
+      order: 999
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+release:
+  github:
+    owner: ForeGuards
+    name: dfir-cli
+  draft: false
+  header: |
+    ## DFIR CLI {{ .Version }}
+
+    ### Install
+
+    **Homebrew (macOS/Linux):**
+    ```bash
+    brew install ForeGuards/tap/dfir-cli
+    ```
+
+    **Scoop (Windows):**
+    ```powershell
+    scoop bucket add foreguards https://github.com/ForeGuards/scoop-bucket.git
+    scoop install dfir-cli
+    ```
+
+    **Debian/Ubuntu:**
+    ```bash
+    sudo dpkg -i dfir-cli_{{ .Version }}_linux_amd64.deb
+    ```
+
+    **RPM-based:**
+    ```bash
+    sudo rpm -i dfir-cli_{{ .Version }}_linux_amd64.rpm
+    ```
+
+    **Manual download:**
+    Download the appropriate archive from the assets below and extract the binary.

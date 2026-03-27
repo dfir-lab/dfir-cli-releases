@@ -2,13 +2,13 @@
 # Local development and build automation
 
 BINARY_NAME = dfir-cli
-VERSION = $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+VERSION = $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//' || echo "dev")
 COMMIT = $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE = $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS = -s -w -X github.com/ForeGuards/dfir-cli/internal/version.Version=$(VERSION) -X github.com/ForeGuards/dfir-cli/internal/version.Commit=$(COMMIT) -X github.com/ForeGuards/dfir-cli/internal/version.Date=$(DATE)
 GO = go
 
-.PHONY: all build install clean test test-cover lint fmt vet tidy check run snapshot completions man help
+.PHONY: all build install clean test test-cover lint fmt vet tidy check run snapshot release-check security completions man help
 
 all: build
 
@@ -51,13 +51,23 @@ vet: ## Run go vet
 tidy: ## Run go mod tidy
 	$(GO) mod tidy
 
-check: vet lint test ## Run vet + lint + test (CI-like check)
+check: vet lint test security ## Run vet + lint + test + security (CI-like check)
 
 run: build ## Build and run with ARGS (e.g. make run ARGS="--help")
 	./bin/$(BINARY_NAME) $(ARGS)
 
 snapshot: ## Run goreleaser snapshot build
 	goreleaser release --snapshot --clean
+
+release-check: ## Verify goreleaser config
+	goreleaser check
+
+security: ## Run govulncheck
+	@if command -v govulncheck >/dev/null 2>&1; then \
+		govulncheck ./...; \
+	else \
+		echo "govulncheck not installed. Install: go install golang.org/x/vuln/cmd/govulncheck@latest"; \
+	fi
 
 completions: build ## Generate shell completion scripts to ./completions/
 	@mkdir -p completions

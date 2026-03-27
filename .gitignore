@@ -36,3 +36,6 @@ Thumbs.db
 
 # Man pages (generated)
 /man/
+
+# Temp files from install scripts
+*.tmp
