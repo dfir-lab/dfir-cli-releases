@@ -1,6 +1,8 @@
 # golangci-lint configuration for dfir-cli
 # https://golangci-lint.run/usage/configuration/
 
+version: "2"
+
 run:
   go: "1.26"
   timeout: 5m
