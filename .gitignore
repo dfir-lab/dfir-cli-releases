@@ -39,3 +39,6 @@ Thumbs.db
 
 # Temp files from install scripts
 *.tmp
+
+# Node (husky)
+node_modules/

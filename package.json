@@ -1,0 +1,24 @@
+{
+  "name": "dfir-cli",
+  "version": "1.0.0",
+  "description": "**Digital Forensics & Incident Response CLI**",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ForeGuards/dfir-cli.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ForeGuards/dfir-cli/issues"
+  },
+  "homepage": "https://github.com/ForeGuards/dfir-cli#readme",
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}
