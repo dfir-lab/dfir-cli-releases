@@ -2,10 +2,10 @@
 
 **Digital Forensics & Incident Response CLI**
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/ForeGuards/dfir-cli)](https://goreportcard.com/report/github.com/ForeGuards/dfir-cli)
-[![GitHub Release](https://img.shields.io/github/v/release/ForeGuards/dfir-cli)](https://github.com/ForeGuards/dfir-cli/releases/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dfir-lab/dfir-cli)](https://goreportcard.com/report/github.com/dfir-lab/dfir-cli)
+[![GitHub Release](https://img.shields.io/github/v/release/dfir-lab/dfir-cli)](https://github.com/dfir-lab/dfir-cli/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/ForeGuards/dfir-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/ForeGuards/dfir-cli/actions/workflows/ci.yml)
+[![CI](https://github.com/dfir-lab/dfir-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/dfir-lab/dfir-cli/actions/workflows/ci.yml)
 
 A powerful command-line toolkit for SOC analysts and incident responders, powered by the [DFIR Lab](https://dfir-lab.ch) API.
 
@@ -28,7 +28,7 @@ A powerful command-line toolkit for SOC analysts and incident responders, powere
 
 ```bash
 # Install (macOS)
-brew install ForeGuards/tap/dfir-cli
+brew install dfir-lab/tap/dfir-cli
 
 # Configure
 dfir-cli config init
@@ -50,7 +50,7 @@ dfir-cli exposure scan --domain example.com
 ### macOS (Homebrew)
 
 ```bash
-brew install ForeGuards/tap/dfir-cli
+brew install dfir-lab/tap/dfir-cli
 ```
 
 ### Linux (curl)
@@ -61,7 +61,7 @@ curl -fsSL https://dfir-lab.ch/install.sh | sh
 
 ### Linux (APT / deb)
 
-Download the `.deb` package from the [latest release](https://github.com/ForeGuards/dfir-cli/releases/latest) and install:
+Download the `.deb` package from the [latest release](https://github.com/dfir-lab/dfir-cli/releases/latest) and install:
 
 ```bash
 sudo dpkg -i dfir-cli_*.deb
@@ -70,7 +70,7 @@ sudo dpkg -i dfir-cli_*.deb
 ### Windows (Scoop)
 
 ```powershell
-scoop bucket add foreguards https://github.com/ForeGuards/scoop-bucket.git
+scoop bucket add dfir-lab https://github.com/dfir-lab/scoop-bucket.git
 scoop install dfir-cli
 ```
 
@@ -83,13 +83,13 @@ iwr https://dfir-lab.ch/install.ps1 | iex
 ### Go install
 
 ```bash
-go install github.com/ForeGuards/dfir-cli/cmd/dfir-cli@latest
+go install github.com/dfir-lab/dfir-cli/cmd/dfir-cli@latest
 ```
 
 ### From source
 
 ```bash
-git clone https://github.com/ForeGuards/dfir-cli.git
+git clone https://github.com/dfir-lab/dfir-cli.git
 cd dfir-cli
 make build
 ```
@@ -253,7 +253,7 @@ dfir-cli completion fish > ~/.config/fish/completions/dfir-cli.fish
 ### Build
 
 ```bash
-git clone https://github.com/ForeGuards/dfir-cli.git
+git clone https://github.com/dfir-lab/dfir-cli.git
 cd dfir-cli
 make build
 ```
@@ -290,4 +290,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - [Documentation](https://dfir-lab.ch/docs)
 - [API Reference](https://dfir-lab.ch/api)
 - [Support](https://dfir-lab.ch/support)
-- [GitHub](https://github.com/ForeGuards/dfir-cli)
+- [GitHub](https://github.com/dfir-lab/dfir-cli)
