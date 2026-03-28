@@ -1,0 +1,1 @@
+snyk test --severity-threshold=high --all-projects
