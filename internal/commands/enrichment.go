@@ -136,6 +136,9 @@ or stdin.`,
 	flags.StringVar(&flagEmail, "email", "", "Look up an email address")
 	flags.StringVar(&flagIOC, "ioc", "", "Look up any IOC (auto-detect type)")
 	flags.StringVar(&flagType, "type", "", "Force IOC type: ip, domain, url, hash, email")
+	_ = cmd.RegisterFlagCompletionFunc("type", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"ip", "domain", "url", "hash", "email"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	flags.StringVar(&flagBatch, "batch", "", "File with one IOC per line (use - for stdin)")
 	flags.StringVar(&flagProviders, "providers", "", "Comma-separated provider filter")
 	flags.IntVar(&flagMinScore, "min-score", 0, "Only show providers above this score (0-100)")

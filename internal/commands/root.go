@@ -7,6 +7,7 @@ import (
 
 	"github.com/ForeGuards/dfir-cli/internal/config"
 	"github.com/ForeGuards/dfir-cli/internal/output"
+	"github.com/ForeGuards/dfir-cli/internal/update"
 	"github.com/ForeGuards/dfir-cli/internal/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -78,6 +79,9 @@ func init() {
 	pflags.String("api-key", "", "Override API key for this invocation")
 	pflags.String("api-url", "", "Override API base URL (default from config)")
 	pflags.StringP("output", "o", "table", "Output format: table, json, jsonl, csv")
+	_ = rootCmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"table", "json", "jsonl", "csv"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	pflags.Bool("no-color", false, "Disable colored output")
 	pflags.BoolP("verbose", "v", false, "Show debug information (HTTP requests/responses)")
 	pflags.BoolP("quiet", "q", false, "Minimal output")
@@ -108,6 +112,9 @@ func init() {
 	rootCmd.AddCommand(NewExposureCmd())
 	rootCmd.AddCommand(NewCreditsCmd())
 
+	// Phase 6 commands
+	rootCmd.AddCommand(NewUpdateCmd())
+
 	// Custom help template
 	rootCmd.SetUsageTemplate(usageTemplate)
 }
@@ -116,9 +123,27 @@ func init() {
 // Execute is the single entry-point called by main.go.
 // ---------------------------------------------------------------------------
 
+// RootCmd returns the root command for use by documentation generators.
+func RootCmd() *cobra.Command {
+	return rootCmd
+}
+
 // Execute runs the root command and returns any error.
 func Execute() error {
-	return rootCmd.Execute()
+	// Start background update check (non-blocking).
+	updateCh := update.RunBackgroundCheck(version.Short())
+
+	err := rootCmd.Execute()
+
+	// After command completes, check if an update notice is available.
+	select {
+	case release := <-updateCh:
+		update.PrintUpdateNotice(release)
+	default:
+		// Background check hasn't finished — don't block.
+	}
+
+	return err
 }
 
 // ---------------------------------------------------------------------------
@@ -262,6 +287,7 @@ CONFIGURATION:
 OTHER:
   version       Show version and build information
   completion    Generate shell completion scripts
+  update        Check for and install updates
 {{else}}{{if .HasAvailableSubCommands}}
 Available Commands:
 {{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}  {{rpad .Name .NamePadding}} {{.Short}}
