@@ -124,7 +124,7 @@ snapshot:
 release:
   github:
     owner: ForeGuards
-    name: dfir-cli
+    name: dfir-cli-releases
   draft: false
   header: |
     ## DFIR CLI {{ .Version }}
@@ -140,6 +140,16 @@ release:
     ```powershell
     scoop bucket add foreguards https://github.com/ForeGuards/scoop-bucket.git
     scoop install dfir-cli
+    ```
+
+    **Linux (curl):**
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/ForeGuards/dfir-cli-releases/main/install.sh | sh
+    ```
+
+    **Windows (PowerShell):**
+    ```powershell
+    iwr https://raw.githubusercontent.com/ForeGuards/dfir-cli-releases/main/install.ps1 | iex
     ```
 
     **Debian/Ubuntu:**

@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const githubRepo = "dfir-lab/dfir-cli"
+const githubRepo = "ForeGuards/dfir-cli-releases"
 
 // githubAPIURL is a variable (not const) so tests can override it with httptest servers.
 var githubAPIURL = "https://api.github.com/repos/" + githubRepo + "/releases/latest"
