@@ -84,6 +84,20 @@ brews:
       bash_completion.install "completions/dfir-cli.bash" => "dfir-cli"
       zsh_completion.install "completions/_dfir-cli"
       fish_completion.install "completions/dfir-cli.fish"
+    caveats: |
+      To get started, make sure Homebrew's bin directory is in your PATH:
+
+        export PATH="$(brew --prefix)/bin:$PATH"
+
+      Then reload your shell session:
+
+        exec $SHELL -l
+
+      Configure your API key:
+
+        dfir-cli config init
+
+      Get your API key from https://dfir-lab.ch
     test: |
       system "#{bin}/dfir-cli", "--version"
 
