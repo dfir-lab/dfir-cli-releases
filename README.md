@@ -3,7 +3,7 @@
 **Digital Forensics & Incident Response CLI**
 
 [![GitHub Release](https://img.shields.io/github/v/release/dfir-lab/dfir-cli-releases)](https://github.com/dfir-lab/dfir-cli-releases/releases/latest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
 A powerful command-line toolkit for SOC analysts and incident responders, powered by the [DFIR Lab](https://dfir-lab.ch) API. Analyze phishing emails, enrich indicators of compromise, and scan for external exposure — all from your terminal.
 
@@ -441,14 +441,34 @@ dfir-cli completion fish > ~/.config/fish/completions/dfir-cli.fish
 
 | Operation | Credits |
 |-----------|---------|
-| IOC Enrichment | 3 per indicator |
+| IOC Enrichment (single lookup) | 5 |
+| IOC Enrichment (batch, per IOC) | 3 |
 | Phishing Analysis | 1 |
-| Phishing Analysis (AI) | 10 |
+| Phishing Analysis (AI-enhanced) | 10 |
 | Exposure Scan | 10 (0 if cached) |
 | DNS Lookup | 1 |
 | Blacklist Check | 1 |
+| GeoIP Lookup | 1 |
 | URL Expand | 1 |
-| Safe Browsing | 1 |
+| Safe Browsing | 2 |
+| CheckPhish | 2 |
+| Phishing Enrich | 2 |
+| URLScan | 3 |
+
+Credit costs are subject to change. Check the [DFIR Lab Platform](https://dfir-lab.ch) for the latest pricing.
+
+---
+
+## Feedback and Support
+
+We'd love to hear from you. If you encounter a bug, have a feature request, or want to suggest an improvement:
+
+- **Report a bug** -- Open an issue at [dfir-lab/dfir-cli-releases/issues](https://github.com/dfir-lab/dfir-cli-releases/issues) with steps to reproduce, expected vs. actual behavior, and your dfir-cli version (`dfir-cli --version`).
+- **Request a feature** -- Open an issue describing the use case and how you'd like it to work. We prioritize based on community demand.
+- **Ask a question** -- If something isn't clear in the documentation, open an issue and we'll improve it.
+- **Contact support** -- For account or billing issues, reach out at [dfir-lab.ch/contact](https://dfir-lab.ch/contact).
+
+Your feedback helps us build a better tool for the DFIR community.
 
 ---
 
@@ -458,9 +478,12 @@ dfir-cli completion fish > ~/.config/fish/completions/dfir-cli.fish
 - [API Documentation](https://dfir-lab.ch/docs)
 - [Release Downloads](https://github.com/dfir-lab/dfir-cli-releases/releases)
 - [Homebrew Tap](https://github.com/dfir-lab/homebrew-tap)
+- [Report an Issue](https://github.com/dfir-lab/dfir-cli-releases/issues)
 
 ---
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+Copyright (c) 2026 DFIR Lab. All rights reserved.
+
+This software is proprietary. The compiled binaries are provided for use under the terms described at [dfir-lab.ch/terms](https://dfir-lab.ch/terms). Redistribution, reverse engineering, or modification of the binaries is prohibited without prior written consent.

@@ -1,21 +1,44 @@
-MIT License
+DFIR Lab CLI — Proprietary Software License
 
-Copyright (c) 2026 ForeGuards
+Copyright (c) 2026 DFIR Lab. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software and its associated documentation and binary distributions
+("Software") are the proprietary property of DFIR Lab.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+GRANT OF LICENSE
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+You are granted a non-exclusive, non-transferable, revocable license to use
+the compiled binary distributions of the Software solely for your internal
+business or personal purposes, subject to the terms of service published at
+https://dfir-lab.ch/terms.
+
+RESTRICTIONS
+
+You may not, without prior written consent from DFIR Lab:
+
+  1. Reverse engineer, decompile, disassemble, or otherwise attempt to derive
+     the source code of the Software.
+  2. Modify, adapt, translate, or create derivative works based on the Software.
+  3. Redistribute, sublicense, lease, rent, or lend the Software to any third
+     party.
+  4. Remove or alter any proprietary notices, labels, or marks on the Software.
+  5. Use the Software to build a competing product or service.
+
+DISCLAIMER OF WARRANTIES
+
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL
+DFIR LAB BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM,
+OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+TERMINATION
+
+This license is effective until terminated. DFIR Lab may terminate this license
+at any time if you fail to comply with any of its terms. Upon termination, you
+must cease all use of the Software and destroy all copies in your possession.
+
+GOVERNING LAW
+
+This license shall be governed by and construed in accordance with the laws of
+Switzerland.
