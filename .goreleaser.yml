@@ -123,7 +123,7 @@ snapshot:
 
 release:
   github:
-    owner: ForeGuards
+    owner: dfir-lab
     name: dfir-cli-releases
   draft: false
   header: |
