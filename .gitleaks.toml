@@ -1,0 +1,8 @@
+# Gitleaks configuration for dfir-cli
+# https://github.com/gitleaks/gitleaks
+
+[allowlist]
+  description = "Allow test/example API keys in documentation"
+  paths = [
+    '''tests/MANUAL-TEST-CASES\.md''',
+  ]
