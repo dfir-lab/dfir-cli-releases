@@ -368,19 +368,53 @@ dfir-cli also checks for updates automatically in the background (once every 24 
 
 ## Shell Completions
 
-### Bash
+Shell completions let you press **Tab** to auto-complete commands, subcommands, and flags — for example, typing `dfir-cli enr` + Tab completes to `dfir-cli enrichment`.
+
+### Homebrew (automatic)
+
+If you installed via Homebrew, completions are **already installed**. If Tab completion isn't working, clear the cache and restart your terminal:
 
 ```bash
-dfir-cli completion bash > /etc/bash_completion.d/dfir-cli
+rm -f ~/.zcompdump*
+exec $SHELL -l
 ```
 
-### Zsh
+### Manual installation
+
+If you installed without Homebrew, set up completions for your shell:
+
+**Bash:**
 
 ```bash
-dfir-cli completion zsh > "${fpath[1]}/_dfir-cli"
+dfir-cli completion bash > /usr/local/etc/bash_completion.d/dfir-cli
+source ~/.bashrc
 ```
 
-### Fish
+**Zsh (Oh My Zsh):**
+
+```bash
+dfir-cli completion zsh > ~/.oh-my-zsh/completions/_dfir-cli
+rm -f ~/.zcompdump*
+exec $SHELL -l
+```
+
+If `~/.oh-my-zsh/completions` doesn't exist, create it first: `mkdir -p ~/.oh-my-zsh/completions`
+
+**Zsh (without Oh My Zsh):**
+
+```bash
+mkdir -p ~/.zsh/completions
+dfir-cli completion zsh > ~/.zsh/completions/_dfir-cli
+```
+
+Then add this to your `~/.zshrc` (before `compinit`):
+
+```bash
+fpath=(~/.zsh/completions $fpath)
+autoload -Uz compinit && compinit
+```
+
+**Fish:**
 
 ```bash
 dfir-cli completion fish > ~/.config/fish/completions/dfir-cli.fish
