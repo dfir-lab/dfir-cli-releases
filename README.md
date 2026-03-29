@@ -7,7 +7,7 @@
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 [![CI](https://github.com/dfir-lab/dfir-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/dfir-lab/dfir-cli/actions/workflows/ci.yml)
 
-A powerful command-line toolkit for SOC analysts and incident responders, powered by the [DFIR Platform](https://platform.dfir-lab.ch) API.
+A powerful command-line toolkit for SOC analysts and incident responders, powered by the [DFIR Platform](https://platform.dfir-lab.ch/api-keys) API.
 
 ---
 
