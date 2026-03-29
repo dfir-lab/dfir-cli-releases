@@ -51,7 +51,7 @@ func TestDownloadURL(t *testing.T) {
 		t.Errorf("DownloadURL missing arch (%s): %s", runtime.GOARCH, url)
 	}
 
-	expected := "https://github.com/ForeGuards/dfir-cli-releases/releases/download/v1.2.3/"
+	expected := "https://github.com/dfir-lab/dfir-cli-releases/releases/download/v1.2.3/"
 	if !strings.HasPrefix(url, expected) {
 		t.Errorf("DownloadURL unexpected prefix:\n  got:  %s\n  want prefix: %s", url, expected)
 	}
@@ -60,7 +60,7 @@ func TestDownloadURL(t *testing.T) {
 func TestChecksumURL(t *testing.T) {
 	url := ChecksumURL("v1.2.3")
 
-	expected := "https://github.com/ForeGuards/dfir-cli-releases/releases/download/v1.2.3/dfir-cli_1.2.3_checksums.txt"
+	expected := "https://github.com/dfir-lab/dfir-cli-releases/releases/download/v1.2.3/dfir-cli_1.2.3_checksums.txt"
 	if url != expected {
 		t.Errorf("ChecksumURL:\n  got:  %s\n  want: %s", url, expected)
 	}
@@ -86,7 +86,7 @@ func newMockGitHubServer(t *testing.T, tagName string) *httptest.Server {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"tag_name":     tagName,
 			"name":         tagName,
-			"html_url":     "https://github.com/ForeGuards/dfir-cli-releases/releases/tag/" + tagName,
+			"html_url":     "https://github.com/dfir-lab/dfir-cli-releases/releases/tag/" + tagName,
 			"published_at": time.Now().Format(time.RFC3339),
 		})
 	}))

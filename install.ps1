@@ -36,7 +36,7 @@ $ErrorActionPreference = "Stop"
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-$GH_REPO       = "ForeGuards/dfir-cli-releases"
+$GH_REPO       = "dfir-lab/dfir-cli-releases"
 $GH_API_LATEST = "https://api.github.com/repos/$GH_REPO/releases/latest"
 $BINARY_NAME   = "dfir-cli.exe"
 

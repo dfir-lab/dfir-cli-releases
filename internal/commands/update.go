@@ -85,8 +85,8 @@ func runUpdate(checkOnly bool) error {
 	fmt.Println("To update, run the appropriate command for your installation method:")
 	fmt.Println()
 	fmt.Println("  Homebrew:     brew upgrade dfir-cli")
-	fmt.Println("  Linux:        curl -fsSL https://raw.githubusercontent.com/ForeGuards/dfir-cli-releases/main/install.sh | sh")
-	fmt.Println("  Windows:      iwr https://raw.githubusercontent.com/ForeGuards/dfir-cli-releases/main/install.ps1 | iex")
+	fmt.Println("  Linux:        curl -fsSL https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.sh | sh")
+	fmt.Println("  Windows:      iwr https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.ps1 | iex")
 	fmt.Println("  Go install:   go install github.com/ForeGuards/dfir-cli/cmd/dfir-cli@latest")
 	fmt.Println()
 

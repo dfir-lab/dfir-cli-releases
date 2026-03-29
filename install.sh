@@ -23,7 +23,7 @@ set -e
 # Constants
 # ---------------------------------------------------------------------------
 
-GITHUB_REPO="ForeGuards/dfir-cli-releases"
+GITHUB_REPO="dfir-lab/dfir-cli-releases"
 GITHUB_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
 GITHUB_DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download"
 BINARY_NAME="dfir-cli"

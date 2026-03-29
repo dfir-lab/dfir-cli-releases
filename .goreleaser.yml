@@ -71,7 +71,7 @@ nfpms:
 
 brews:
   - repository:
-      owner: ForeGuards
+      owner: dfir-lab
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     name: dfir-cli
@@ -89,7 +89,7 @@ brews:
 
 scoops:
   - repository:
-      owner: ForeGuards
+      owner: dfir-lab
       name: scoop-bucket
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     name: dfir-cli
@@ -133,23 +133,23 @@ release:
 
     **Homebrew (macOS/Linux):**
     ```bash
-    brew install ForeGuards/tap/dfir-cli
+    brew install dfir-lab/tap/dfir-cli
     ```
 
     **Scoop (Windows):**
     ```powershell
-    scoop bucket add foreguards https://github.com/ForeGuards/scoop-bucket.git
+    scoop bucket add dfir-lab https://github.com/dfir-lab/scoop-bucket.git
     scoop install dfir-cli
     ```
 
     **Linux (curl):**
     ```bash
-    curl -fsSL https://raw.githubusercontent.com/ForeGuards/dfir-cli-releases/main/install.sh | sh
+    curl -fsSL https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.sh | sh
     ```
 
     **Windows (PowerShell):**
     ```powershell
-    iwr https://raw.githubusercontent.com/ForeGuards/dfir-cli-releases/main/install.ps1 | iex
+    iwr https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.ps1 | iex
     ```
 
     **Debian/Ubuntu:**

@@ -3,7 +3,7 @@
 **Digital Forensics & Incident Response CLI**
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/dfir-lab/dfir-cli)](https://goreportcard.com/report/github.com/dfir-lab/dfir-cli)
-[![GitHub Release](https://img.shields.io/github/v/release/ForeGuards/dfir-cli-releases)](https://github.com/ForeGuards/dfir-cli-releases/releases/latest)
+[![GitHub Release](https://img.shields.io/github/v/release/dfir-lab/dfir-cli-releases)](https://github.com/dfir-lab/dfir-cli-releases/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/dfir-lab/dfir-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/dfir-lab/dfir-cli/actions/workflows/ci.yml)
 
@@ -56,12 +56,12 @@ brew install dfir-lab/tap/dfir-cli
 ### Linux (curl)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ForeGuards/dfir-cli-releases/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.sh | sh
 ```
 
 ### Linux (APT / deb)
 
-Download the `.deb` package from the [latest release](https://github.com/ForeGuards/dfir-cli-releases/releases/latest) and install:
+Download the `.deb` package from the [latest release](https://github.com/dfir-lab/dfir-cli-releases/releases/latest) and install:
 
 ```bash
 sudo dpkg -i dfir-cli_*.deb
@@ -77,7 +77,7 @@ scoop install dfir-cli
 ### Windows (PowerShell)
 
 ```powershell
-iwr https://raw.githubusercontent.com/ForeGuards/dfir-cli-releases/main/install.ps1 | iex
+iwr https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.ps1 | iex
 ```
 
 ### Go install
@@ -290,4 +290,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - [Documentation](https://platform.dfir-lab.ch/docs)
 - [API Reference](https://platform.dfir-lab.ch/api)
 - [Support](https://platform.dfir-lab.ch/support)
-- [GitHub](https://github.com/ForeGuards/dfir-cli-releases)
+- [GitHub](https://github.com/dfir-lab/dfir-cli-releases)
