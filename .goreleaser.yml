@@ -112,25 +112,7 @@ scoops:
     license: Proprietary
 
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^Merge"
-      - "^merge"
-      - "^docs"
-      - "^test"
-      - "^refactor"
-      - "^chore"
-      - "^ci"
-  groups:
-    - title: Features
-      regexp: "^.*feat.*$"
-      order: 0
-    - title: Bug Fixes
-      regexp: "^.*fix.*$"
-      order: 1
-    - title: Others
-      order: 999
+  disable: true
 
 snapshot:
   name_template: "{{ .Tag }}-next"
