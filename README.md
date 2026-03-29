@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/dfir-lab/dfir-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/dfir-lab/dfir-cli/actions/workflows/ci.yml)
 
-A powerful command-line toolkit for SOC analysts and incident responders, powered by the [DFIR Lab](https://dfir-lab.ch) API.
+A powerful command-line toolkit for SOC analysts and incident responders, powered by the [DFIR Platform](https://platform.dfir-lab.ch) API.
 
 ---
 
@@ -286,8 +286,8 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Links
 
-- [Website](https://dfir-lab.ch)
-- [Documentation](https://dfir-lab.ch/docs)
-- [API Reference](https://dfir-lab.ch/api)
-- [Support](https://dfir-lab.ch/support)
-- [GitHub](https://github.com/dfir-lab/dfir-cli)
+- [Platform](https://platform.dfir-lab.ch)
+- [Documentation](https://platform.dfir-lab.ch/docs)
+- [API Reference](https://platform.dfir-lab.ch/api)
+- [Support](https://platform.dfir-lab.ch/support)
+- [GitHub](https://github.com/ForeGuards/dfir-cli-releases)
