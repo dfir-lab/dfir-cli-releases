@@ -224,23 +224,16 @@ Exit codes make it easy to integrate `dfir-cli` into automated pipelines and ale
 
 ## Shell Completions
 
-### Bash
+Shell completions let you press **Tab** to auto-complete commands, subcommands, and flags.
+
+If you installed via Homebrew, completions are already installed. If Tab completion isn't working, clear the cache and restart your terminal:
 
 ```bash
-dfir-cli completion bash > /etc/bash_completion.d/dfir-cli
+rm -f ~/.zcompdump*
+exec $SHELL -l
 ```
 
-### Zsh
-
-```bash
-dfir-cli completion zsh > "${fpath[1]}/_dfir-cli"
-```
-
-### Fish
-
-```bash
-dfir-cli completion fish > ~/.config/fish/completions/dfir-cli.fish
-```
+For manual installation, see the [full documentation](https://github.com/dfir-lab/dfir-cli-releases#shell-completions).
 
 ---
 
