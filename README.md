@@ -4,7 +4,7 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/dfir-lab/dfir-cli)](https://goreportcard.com/report/github.com/dfir-lab/dfir-cli)
 [![GitHub Release](https://img.shields.io/github/v/release/dfir-lab/dfir-cli-releases)](https://github.com/dfir-lab/dfir-cli-releases/releases/latest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 [![CI](https://github.com/dfir-lab/dfir-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/dfir-lab/dfir-cli/actions/workflows/ci.yml)
 
 A powerful command-line toolkit for SOC analysts and incident responders, powered by the [DFIR Platform](https://platform.dfir-lab.ch) API.
@@ -273,7 +273,7 @@ Contributions are welcome. Please open an issue to discuss proposed changes befo
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+Copyright (c) 2026 DFIR Lab. All rights reserved. See the [LICENSE](LICENSE) file for details.
 
 ---
 

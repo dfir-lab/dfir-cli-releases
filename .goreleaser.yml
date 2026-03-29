@@ -50,7 +50,7 @@ nfpms:
     homepage: https://dfir-lab.ch
     maintainer: "ForeGuards <info@foreguards.com>"
     description: "DFIR Lab CLI — digital forensics and incident response toolkit"
-    license: MIT
+    license: Proprietary
     formats:
       - deb
       - rpm
@@ -77,7 +77,7 @@ brews:
     name: dfir-cli
     description: "DFIR Lab CLI — digital forensics and incident response toolkit"
     homepage: https://dfir-lab.ch
-    license: MIT
+    license: Proprietary
     install: |
       bin.install "dfir-cli"
 
@@ -109,7 +109,7 @@ scoops:
     name: dfir-cli
     description: "DFIR Lab CLI — digital forensics and incident response toolkit"
     homepage: https://dfir-lab.ch
-    license: MIT
+    license: Proprietary
 
 changelog:
   sort: asc
