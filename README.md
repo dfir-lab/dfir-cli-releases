@@ -56,7 +56,7 @@ brew install dfir-lab/tap/dfir-cli
 ### Linux (curl)
 
 ```bash
-curl -fsSL https://dfir-lab.ch/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/ForeGuards/dfir-cli/main/install.sh | sh
 ```
 
 ### Linux (APT / deb)
@@ -77,7 +77,7 @@ scoop install dfir-cli
 ### Windows (PowerShell)
 
 ```powershell
-iwr https://dfir-lab.ch/install.ps1 | iex
+iwr https://raw.githubusercontent.com/ForeGuards/dfir-cli/main/install.ps1 | iex
 ```
 
 ### Go install

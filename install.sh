@@ -4,9 +4,9 @@
 # =============================================================================
 #
 # Usage:
-#   curl -fsSL https://dfir-lab.ch/install.sh | sh
-#   curl -fsSL https://dfir-lab.ch/install.sh | sh -s -- --version 1.2.0
-#   curl -fsSL https://dfir-lab.ch/install.sh | sh -s -- --install-dir /opt/bin
+#   curl -fsSL https://raw.githubusercontent.com/ForeGuards/dfir-cli/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/ForeGuards/dfir-cli/main/install.sh | sh -s -- --version 1.2.0
+#   curl -fsSL https://raw.githubusercontent.com/ForeGuards/dfir-cli/main/install.sh | sh -s -- --install-dir /opt/bin
 #
 # This script downloads and installs the dfir-cli binary for the current
 # platform. It verifies the download using SHA256 checksums before installing.
