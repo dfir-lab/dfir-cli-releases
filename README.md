@@ -2,7 +2,7 @@
 
 **Digital Forensics & Incident Response CLI**
 
-A powerful command-line toolkit for SOC analysts and incident responders, powered by the [DFIR Lab](https://dfir-lab.ch) API.
+A powerful command-line toolkit for SOC analysts and incident responders, powered by the [DFIR Platform](https://platform.dfir-lab.ch) API.
 
 ## Installation
 
@@ -33,4 +33,4 @@ iwr https://raw.githubusercontent.com/ForeGuards/dfir-cli-releases/main/install.
 
 ## About
 
-This repository hosts release binaries for dfir-cli. For documentation and support, visit [dfir-lab.ch](https://dfir-lab.ch).
+This repository hosts release binaries for dfir-cli. For documentation and support, visit [DFIR Platform](https://platform.dfir-lab.ch).
