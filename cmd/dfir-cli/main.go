@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ForeGuards/dfir-cli/internal/commands"
+	"github.com/dfir-lab/dfir-cli/internal/commands"
 )
 
 func main() {

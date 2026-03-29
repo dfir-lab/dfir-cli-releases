@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ForeGuards/dfir-cli/internal/config"
+	"github.com/dfir-lab/dfir-cli/internal/config"
 )
 
 // ---------------------------------------------------------------------------

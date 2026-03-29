@@ -14,7 +14,7 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X github.com/ForeGuards/dfir-cli/internal/version.Version={{.Version}} -X github.com/ForeGuards/dfir-cli/internal/version.Commit={{.Commit}} -X github.com/ForeGuards/dfir-cli/internal/version.Date={{.Date}}
+      - -s -w -X github.com/dfir-lab/dfir-cli/internal/version.Version={{.Version}} -X github.com/dfir-lab/dfir-cli/internal/version.Commit={{.Commit}} -X github.com/dfir-lab/dfir-cli/internal/version.Date={{.Date}}
     goos:
       - darwin
       - linux
@@ -46,9 +46,9 @@ nfpms:
   - id: packages
     package_name: dfir-cli
     file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    vendor: ForeGuards
+    vendor: DFIR Lab
     homepage: https://dfir-lab.ch
-    maintainer: "ForeGuards <info@foreguards.com>"
+    maintainer: "DFIR Lab <info@dfir-lab.ch>"
     description: "DFIR Lab CLI — digital forensics and incident response toolkit"
     license: Proprietary
     formats:

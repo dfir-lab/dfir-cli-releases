@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ForeGuards/dfir-cli/internal/output"
-	"github.com/ForeGuards/dfir-cli/internal/update"
-	"github.com/ForeGuards/dfir-cli/internal/version"
+	"github.com/dfir-lab/dfir-cli/internal/output"
+	"github.com/dfir-lab/dfir-cli/internal/update"
+	"github.com/dfir-lab/dfir-cli/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -87,7 +87,7 @@ func runUpdate(checkOnly bool) error {
 	fmt.Println("  Homebrew:     brew upgrade dfir-cli")
 	fmt.Println("  Linux:        curl -fsSL https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.sh | sh")
 	fmt.Println("  Windows:      iwr https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.ps1 | iex")
-	fmt.Println("  Go install:   go install github.com/ForeGuards/dfir-cli/cmd/dfir-cli@latest")
+	fmt.Println("  Go install:   go install github.com/dfir-lab/dfir-cli/cmd/dfir-cli@latest")
 	fmt.Println()
 
 	return nil

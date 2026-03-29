@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ForeGuards/dfir-cli/internal/client"
+	"github.com/dfir-lab/dfir-cli/internal/client"
 )
 
 // ---------------------------------------------------------------------------

@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ForeGuards/dfir-cli/internal/client"
-	"github.com/ForeGuards/dfir-cli/internal/output"
-	"github.com/ForeGuards/dfir-cli/internal/version"
+	"github.com/dfir-lab/dfir-cli/internal/client"
+	"github.com/dfir-lab/dfir-cli/internal/output"
+	"github.com/dfir-lab/dfir-cli/internal/version"
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"

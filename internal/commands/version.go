@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/ForeGuards/dfir-cli/internal/version"
+	"github.com/dfir-lab/dfir-cli/internal/version"
 	"github.com/spf13/cobra"
 )
 

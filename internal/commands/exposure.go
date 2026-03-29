@@ -11,9 +11,9 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/ForeGuards/dfir-cli/internal/client"
-	"github.com/ForeGuards/dfir-cli/internal/output"
-	"github.com/ForeGuards/dfir-cli/internal/version"
+	"github.com/dfir-lab/dfir-cli/internal/client"
+	"github.com/dfir-lab/dfir-cli/internal/output"
+	"github.com/dfir-lab/dfir-cli/internal/version"
 	"github.com/spf13/cobra"
 )
 

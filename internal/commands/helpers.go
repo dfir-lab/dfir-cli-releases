@@ -10,8 +10,8 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/ForeGuards/dfir-cli/internal/client"
-	"github.com/ForeGuards/dfir-cli/internal/version"
+	"github.com/dfir-lab/dfir-cli/internal/client"
+	"github.com/dfir-lab/dfir-cli/internal/version"
 )
 
 // newAPIClient creates an authenticated API client using the resolved

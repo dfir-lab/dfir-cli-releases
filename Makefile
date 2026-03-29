@@ -5,7 +5,7 @@ BINARY_NAME = dfir-cli
 VERSION = $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//' || echo "dev")
 COMMIT = $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE = $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
-LDFLAGS = -s -w -X github.com/ForeGuards/dfir-cli/internal/version.Version=$(VERSION) -X github.com/ForeGuards/dfir-cli/internal/version.Commit=$(COMMIT) -X github.com/ForeGuards/dfir-cli/internal/version.Date=$(DATE)
+LDFLAGS = -s -w -X github.com/dfir-lab/dfir-cli/internal/version.Version=$(VERSION) -X github.com/dfir-lab/dfir-cli/internal/version.Commit=$(COMMIT) -X github.com/dfir-lab/dfir-cli/internal/version.Date=$(DATE)
 GO = go
 
 .PHONY: all build install clean test test-cover lint fmt vet tidy check run snapshot release-check security completions man help

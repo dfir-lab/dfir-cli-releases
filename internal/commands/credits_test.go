@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ForeGuards/dfir-cli/internal/client"
+	"github.com/dfir-lab/dfir-cli/internal/client"
 )
 
 // newTestMeta returns a ResponseMeta suitable for tests.

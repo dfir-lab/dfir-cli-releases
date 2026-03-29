@@ -15,7 +15,7 @@
     Custom installation directory. Defaults to $env:USERPROFILE\.dfir-cli\bin
 
 .EXAMPLE
-    iwr https://raw.githubusercontent.com/ForeGuards/dfir-cli/main/install.ps1 | iex
+    iwr https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.ps1 | iex
 
 .EXAMPLE
     .\install.ps1 -Version 0.3.1

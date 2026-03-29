@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ForeGuards/dfir-cli/internal/config"
+	"github.com/dfir-lab/dfir-cli/internal/config"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )

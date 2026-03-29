@@ -1,4 +1,4 @@
-module github.com/ForeGuards/dfir-cli
+module github.com/dfir-lab/dfir-cli
 
 go 1.26.1
 

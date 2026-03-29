@@ -5,10 +5,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/ForeGuards/dfir-cli/internal/config"
-	"github.com/ForeGuards/dfir-cli/internal/output"
-	"github.com/ForeGuards/dfir-cli/internal/update"
-	"github.com/ForeGuards/dfir-cli/internal/version"
+	"github.com/dfir-lab/dfir-cli/internal/config"
+	"github.com/dfir-lab/dfir-cli/internal/output"
+	"github.com/dfir-lab/dfir-cli/internal/update"
+	"github.com/dfir-lab/dfir-cli/internal/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

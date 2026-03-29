@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ForeGuards/dfir-cli/internal/client"
-	"github.com/ForeGuards/dfir-cli/internal/config"
+	"github.com/dfir-lab/dfir-cli/internal/client"
+	"github.com/dfir-lab/dfir-cli/internal/config"
 	"github.com/spf13/cobra"
 )
 
