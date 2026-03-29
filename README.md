@@ -455,7 +455,7 @@ dfir-cli completion fish > ~/.config/fish/completions/dfir-cli.fish
 | Phishing Enrich | 2 |
 | URLScan | 3 |
 
-Credit costs are subject to change. Check the [DFIR Lab Platform](https://dfir-lab.ch) for the latest pricing.
+Credit costs are subject to change. Check the [DFIR Lab Platform](https://platform.dfir-lab.ch) for the latest pricing.
 
 ---
 
@@ -466,7 +466,7 @@ We'd love to hear from you. If you encounter a bug, have a feature request, or w
 - **Report a bug** -- Open an issue at [dfir-lab/dfir-cli-releases/issues](https://github.com/dfir-lab/dfir-cli-releases/issues) with steps to reproduce, expected vs. actual behavior, and your dfir-cli version (`dfir-cli --version`).
 - **Request a feature** -- Open an issue describing the use case and how you'd like it to work. We prioritize based on community demand.
 - **Ask a question** -- If something isn't clear in the documentation, open an issue and we'll improve it.
-- **Contact support** -- For account or billing issues, reach out at [dfir-lab.ch/contact](https://dfir-lab.ch/contact).
+- **Contact support** -- For account or billing issues, reach out at [platform.dfir-lab.ch/contact](https://platform.dfir-lab.ch/contact).
 
 Your feedback helps us build a better tool for the DFIR community.
 
@@ -474,8 +474,8 @@ Your feedback helps us build a better tool for the DFIR community.
 
 ## Links
 
-- [DFIR Lab Platform](https://dfir-lab.ch)
-- [API Documentation](https://dfir-lab.ch/docs)
+- [DFIR Lab Platform](https://platform.dfir-lab.ch)
+- [API Documentation](https://platform.dfir-lab.ch/docs)
 - [Release Downloads](https://github.com/dfir-lab/dfir-cli-releases/releases)
 - [Homebrew Tap](https://github.com/dfir-lab/homebrew-tap)
 - [Report an Issue](https://github.com/dfir-lab/dfir-cli-releases/issues)
@@ -486,4 +486,4 @@ Your feedback helps us build a better tool for the DFIR community.
 
 Copyright (c) 2026 DFIR Lab. All rights reserved.
 
-This software is proprietary. The compiled binaries are provided for use under the terms described at [dfir-lab.ch/terms](https://dfir-lab.ch/terms). Redistribution, reverse engineering, or modification of the binaries is prohibited without prior written consent.
+This software is proprietary. The compiled binaries are provided for use under the terms described at [platform.dfir-lab.ch/terms](https://platform.dfir-lab.ch/terms). Redistribution, reverse engineering, or modification of the binaries is prohibited without prior written consent.
