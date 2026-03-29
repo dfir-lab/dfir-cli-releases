@@ -9,26 +9,26 @@ A powerful command-line toolkit for SOC analysts and incident responders, powere
 ### macOS (Homebrew)
 
 ```bash
-brew install ForeGuards/tap/dfir-cli
+brew install dfir-lab/tap/dfir-cli
 ```
 
 ### Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ForeGuards/dfir-cli-releases/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.sh | sh
 ```
 
 ### Windows (Scoop)
 
 ```powershell
-scoop bucket add dfir-lab https://github.com/ForeGuards/scoop-bucket.git
+scoop bucket add dfir-lab https://github.com/dfir-lab/scoop-bucket.git
 scoop install dfir-cli
 ```
 
 ### Windows (PowerShell)
 
 ```powershell
-iwr https://raw.githubusercontent.com/ForeGuards/dfir-cli-releases/main/install.ps1 | iex
+iwr https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.ps1 | iex
 ```
 
 ## About
