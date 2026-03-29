@@ -5,7 +5,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/dfir-lab/dfir-cli-releases)](https://github.com/dfir-lab/dfir-cli-releases/releases/latest)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
-A powerful command-line toolkit for SOC analysts and incident responders, powered by the [DFIR Lab](https://dfir-lab.ch) API. Analyze phishing emails, enrich indicators of compromise, and scan for external exposure — all from your terminal.
+A powerful command-line toolkit for SOC analysts and incident responders, powered by the [DFIR Lab](https://platform.dfir-lab.ch) API. Analyze phishing emails, enrich indicators of compromise, and scan for external exposure — all from your terminal.
 
 ---
 
@@ -56,7 +56,7 @@ dfir-cli --version
 
 ### Step 1: Configure your API key
 
-Get your API key from the [DFIR Lab Platform](https://dfir-lab.ch) dashboard, then run:
+Get your API key from the [DFIR Lab Platform](https://platform.dfir-lab.ch) dashboard, then run:
 
 ```bash
 dfir-cli config init
