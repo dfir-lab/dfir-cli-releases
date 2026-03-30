@@ -698,7 +698,7 @@ func TestErrorMessages_ActionableHints(t *testing.T) {
 	t.Run("InsufficientCreditsError has billing URL and credits hint", func(t *testing.T) {
 		e := &InsufficientCreditsError{}
 		got := e.Error()
-		if !strings.Contains(got, "https://dfir-lab.ch/billing") {
+		if !strings.Contains(got, "https://platform.dfir-lab.ch/billing") {
 			t.Errorf("expected billing URL, got: %s", got)
 		}
 		if !strings.Contains(got, "dfir-cli credits") {

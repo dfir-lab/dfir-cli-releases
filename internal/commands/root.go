@@ -323,5 +323,5 @@ GETTING STARTED:
   $ dfir-cli exposure scan --domain example.com   Scan for exposures
 
 LEARN MORE:
-  https://dfir-lab.ch/docs
+  https://platform.dfir-lab.ch/docs
 {{end}}`

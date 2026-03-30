@@ -49,7 +49,7 @@ func (e *InsufficientCreditsError) Error() string {
 	if msg == "" {
 		msg = "not enough credits to complete this request"
 	}
-	return fmt.Sprintf("insufficient credits: %s\n  Add credits: https://dfir-lab.ch/billing\n  Check balance: dfir-cli credits", msg)
+	return fmt.Sprintf("insufficient credits: %s\n  Add credits: https://platform.dfir-lab.ch/billing\n  Check balance: dfir-cli credits", msg)
 }
 
 // ValidationError is returned when the API responds with 400 Bad Request.

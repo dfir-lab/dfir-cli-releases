@@ -104,7 +104,7 @@ func newConfigInitCmd() *cobra.Command {
 
 			// Validate API key format.
 			if err := config.ValidateAPIKeyFormat(apiKey); err != nil {
-				fmt.Fprintln(os.Stderr, "\nYou can find your API key at: https://dfir-lab.ch/settings/api-keys")
+				fmt.Fprintln(os.Stderr, "\nYou can find your API key at: https://platform.dfir-lab.ch/settings/api-keys")
 				return fmt.Errorf("invalid API key: %w", err)
 			}
 
