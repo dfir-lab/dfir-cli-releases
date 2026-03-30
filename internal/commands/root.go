@@ -29,7 +29,7 @@ Capabilities include:
   - Exposure scanning: search for leaked credentials across breach datasets
   - IOC enrichment: look up domains, IPs, hashes, and emails against curated threat feeds
 
-Authenticate with an API key from https://dfir-lab.ch and start investigating.`,
+Authenticate with an API key from https://platform.dfir-lab.ch and start investigating.`,
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		CompletionOptions: cobra.CompletionOptions{
