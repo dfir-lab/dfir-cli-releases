@@ -8,7 +8,11 @@ import (
 // PhishingEnrich performs enrichment on phishing indicators.
 // POST /phishing/enrich
 func (c *Client) PhishingEnrich(ctx context.Context, url string) (map[string]interface{}, *Response, error) {
-	body := map[string]string{"url": url}
+	body := map[string]interface{}{
+		"indicators": []map[string]string{
+			{"type": "url", "value": url},
+		},
+	}
 	var result map[string]interface{}
 	resp, err := c.Do(ctx, http.MethodPost, "/phishing/enrich", body, &result)
 	if err != nil {

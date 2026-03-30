@@ -299,7 +299,11 @@ func printExposureTable(result *client.ExposureScanResponse, resp *client.Respon
 	fmt.Printf("  Cached:      %s\n", cached)
 
 	if len(result.Providers) > 0 {
-		fmt.Printf("  Providers:   %s\n", strings.Join(result.Providers, ", "))
+		names := make([]string, 0, len(result.Providers))
+		for _, p := range result.Providers {
+			names = append(names, p.Name)
+		}
+		fmt.Printf("  Providers:   %s\n", strings.Join(names, ", "))
 	}
 
 	// Show key fields from results.

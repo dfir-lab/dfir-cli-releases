@@ -5,10 +5,10 @@ import (
 	"net/http"
 )
 
-// PhishingCheckPhish submits a URL to the CheckPhish service.
+// PhishingCheckPhish submits URLs to the CheckPhish service.
 // POST /phishing/checkphish
 func (c *Client) PhishingCheckPhish(ctx context.Context, url string) (map[string]interface{}, *Response, error) {
-	body := map[string]string{"url": url}
+	body := map[string][]string{"urls": {url}}
 	var result map[string]interface{}
 	resp, err := c.Do(ctx, http.MethodPost, "/phishing/checkphish", body, &result)
 	if err != nil {
@@ -17,10 +17,10 @@ func (c *Client) PhishingCheckPhish(ctx context.Context, url string) (map[string
 	return result, resp, nil
 }
 
-// PhishingURLScan submits a URL to URLScan.io for analysis.
+// PhishingURLScan submits URLs to URLScan.io for analysis.
 // POST /phishing/urlscan
 func (c *Client) PhishingURLScan(ctx context.Context, url string) (map[string]interface{}, *Response, error) {
-	body := map[string]string{"url": url}
+	body := map[string][]string{"urls": {url}}
 	var result map[string]interface{}
 	resp, err := c.Do(ctx, http.MethodPost, "/phishing/urlscan", body, &result)
 	if err != nil {

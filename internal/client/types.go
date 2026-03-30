@@ -215,8 +215,17 @@ type ExposureScanResponse struct {
 	RiskScore  int                    `json:"riskScore"`
 	RiskLevel  string                 `json:"riskLevel"` // low, medium, high, critical
 	Results    map[string]interface{} `json:"results"`
-	Providers  []string               `json:"providers"`
+	Providers  []ScanProvider         `json:"providers"`
 	Stats      *ScanStats             `json:"stats,omitempty"`
+}
+
+// ScanProvider describes a provider that contributed to the scan.
+type ScanProvider struct {
+	Name       string   `json:"name"`
+	Status     string   `json:"status"` // complete, error
+	Categories []string `json:"categories"`
+	DurationMs int      `json:"durationMs"`
+	Error      string   `json:"error,omitempty"`
 }
 
 // ScanStats contains timing metadata for a scan.

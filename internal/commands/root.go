@@ -124,7 +124,6 @@ func init() {
 	rootCmd.AddCommand(NewPhishingCmd())
 	rootCmd.AddCommand(NewExposureCmd())
 	rootCmd.AddCommand(NewCreditsCmd())
-	rootCmd.AddCommand(NewUsageCmd())
 
 	// Phase 6 commands
 	rootCmd.AddCommand(NewUpdateCmd())
@@ -297,7 +296,6 @@ COMMANDS:
 
 ACCOUNT:
   credits       View and manage API credit balance
-  usage         Display API usage statistics
 
 CONFIGURATION:
   config        Manage CLI configuration and profiles
