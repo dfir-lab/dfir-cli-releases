@@ -20,11 +20,13 @@ func NewUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "Check for and install updates",
-		Long: `Check for a newer version of dfir-cli.
+		Long: `Check for a newer version of dfir-cli and install it.
 
-Use --check to only check without showing install instructions. When a
-newer version is available, the command displays installation instructions
-for your platform.`,
+Without flags, dfir-cli downloads and installs the latest version
+automatically. Homebrew and Scoop installations are detected and
+updated through their respective package managers.
+
+Use --check to only check for updates without installing.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runUpdate(checkOnly)
@@ -39,14 +41,13 @@ for your platform.`,
 func runUpdate(checkOnly bool) error {
 	currentVersion := version.Version
 
-	// Show current version
 	fmt.Fprintf(os.Stderr, "Current version: %s\n", currentVersion)
 
 	if currentVersion == "dev" {
 		return fmt.Errorf("cannot update a development build. Install from a release instead")
 	}
 
-	// Check for updates with a spinner
+	// Check for updates with a spinner.
 	spin := output.NewSpinner("Checking for updates...")
 	output.StartSpinner(spin)
 
@@ -76,18 +77,32 @@ func runUpdate(checkOnly bool) error {
 	fmt.Println()
 
 	if checkOnly {
-		fmt.Println("Run 'dfir-cli update' to install the update.")
+		// Show the single relevant update command for this platform.
+		method := update.DetectInstallMethod()
+		switch method {
+		case update.InstallHomebrew:
+			fmt.Println("  To update, run:")
+			fmt.Println("    brew upgrade dfir-lab/tap/dfir-cli")
+		case update.InstallScoop:
+			fmt.Println("  To update, run:")
+			fmt.Println("    scoop update dfir-cli")
+		default:
+			fmt.Println("  To update, run:")
+			fmt.Println("    dfir-cli update")
+		}
 		return nil
 	}
 
-	// Show update instructions (actual binary replacement is complex and
-	// platform-specific — for now, guide the user to reinstall)
-	fmt.Println("To update, run the appropriate command for your installation method:")
+	// Perform the update.
+	updateCtx, updateCancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer updateCancel()
+
+	if err := update.SelfUpdate(updateCtx, release, IsVerbose()); err != nil {
+		return fmt.Errorf("update failed: %w", err)
+	}
+
 	fmt.Println()
-	fmt.Println("  Homebrew:     brew upgrade dfir-cli")
-	fmt.Println("  Linux:        curl -fsSL https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.sh | sh")
-	fmt.Println("  Windows:      iwr https://raw.githubusercontent.com/dfir-lab/dfir-cli-releases/main/install.ps1 | iex")
-	fmt.Println("  Go install:   go install github.com/dfir-lab/dfir-cli/cmd/dfir-cli@latest")
+	output.Green.Printf("  Successfully updated to %s\n", latestVersion)
 	fmt.Println()
 
 	return nil
