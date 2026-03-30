@@ -586,3 +586,283 @@ func TestIsCreditsError(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// ParseError — malformed JSON body
+// ---------------------------------------------------------------------------
+
+func TestParseError_MalformedJSON(t *testing.T) {
+	resp := mockResp(http.StatusBadRequest, `{"error": {"type": "broken`)
+
+	err := ParseError(resp)
+
+	var valErr *ValidationError
+	if !errors.As(err, &valErr) {
+		t.Fatalf("expected *ValidationError, got %T: %v", err, err)
+	}
+	// Should fall back to HTTP status text since JSON is malformed.
+	if valErr.Message != "Bad Request" {
+		t.Errorf("expected fallback 'Bad Request', got %q", valErr.Message)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ParseError — string error format (not object)
+// ---------------------------------------------------------------------------
+
+func TestParseError_StringErrorFormat(t *testing.T) {
+	tests := []struct {
+		name       string
+		status     int
+		body       string
+		wantType   string
+		wantMsg    string
+	}{
+		{
+			name:     "401 with string error",
+			status:   http.StatusUnauthorized,
+			body:     `{"error":"key is invalid"}`,
+			wantType: "*client.AuthenticationError",
+			wantMsg:  "key is invalid",
+		},
+		{
+			name:     "403 with string error",
+			status:   http.StatusForbidden,
+			body:     `{"error":"no permission"}`,
+			wantType: "*client.AuthorizationError",
+			wantMsg:  "no permission",
+		},
+		{
+			name:     "402 with string error",
+			status:   http.StatusPaymentRequired,
+			body:     `{"error":"out of credits"}`,
+			wantType: "*client.InsufficientCreditsError",
+			wantMsg:  "out of credits",
+		},
+		{
+			name:     "429 with string error",
+			status:   http.StatusTooManyRequests,
+			body:     `{"error":"rate limit hit"}`,
+			wantType: "*client.RateLimitError",
+			wantMsg:  "rate limit hit",
+		},
+		{
+			name:     "404 with string error",
+			status:   http.StatusNotFound,
+			body:     `{"error":"item not found"}`,
+			wantType: "*client.NotFoundError",
+			wantMsg:  "item not found",
+		},
+		{
+			name:     "503 with string error",
+			status:   http.StatusServiceUnavailable,
+			body:     `{"error":"service unavailable"}`,
+			wantType: "*client.APIError",
+			wantMsg:  "service unavailable",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := mockResp(tc.status, tc.body)
+			err := ParseError(resp)
+			if err == nil {
+				t.Fatal("expected non-nil error")
+			}
+
+			got := fmt.Sprintf("%T", err)
+			if got != tc.wantType {
+				t.Errorf("expected type %s, got %s", tc.wantType, got)
+			}
+
+			if !strings.Contains(err.Error(), tc.wantMsg) {
+				t.Errorf("expected message to contain %q, got %q", tc.wantMsg, err.Error())
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Error messages contain actionable hints
+// ---------------------------------------------------------------------------
+
+func TestErrorMessages_ActionableHints(t *testing.T) {
+	t.Run("AuthenticationError has config init hint", func(t *testing.T) {
+		e := &AuthenticationError{Message: "expired key"}
+		got := e.Error()
+		if !strings.Contains(got, "dfir-cli config init") {
+			t.Errorf("expected hint about config init, got: %s", got)
+		}
+	})
+
+	t.Run("InsufficientCreditsError has billing URL and credits hint", func(t *testing.T) {
+		e := &InsufficientCreditsError{}
+		got := e.Error()
+		if !strings.Contains(got, "https://dfir-lab.ch/billing") {
+			t.Errorf("expected billing URL, got: %s", got)
+		}
+		if !strings.Contains(got, "dfir-cli credits") {
+			t.Errorf("expected credits command hint, got: %s", got)
+		}
+	})
+
+	t.Run("RateLimitError includes retry duration", func(t *testing.T) {
+		e := &RateLimitError{RetryAfter: 45 * time.Second}
+		got := e.Error()
+		if !strings.Contains(got, "45s") {
+			t.Errorf("expected 45s in message, got: %s", got)
+		}
+	})
+
+	t.Run("APIError with request ID includes it in output", func(t *testing.T) {
+		e := &APIError{StatusCode: 500, Message: "crash", RequestID: "req-id-xyz"}
+		got := e.Error()
+		if !strings.Contains(got, "req-id-xyz") {
+			t.Errorf("expected request ID in message, got: %s", got)
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// All HTTP status codes mapped correctly
+// ---------------------------------------------------------------------------
+
+func TestParseError_AllStatusCodesMapped(t *testing.T) {
+	tests := []struct {
+		status   int
+		wantType string
+	}{
+		{401, "*client.AuthenticationError"},
+		{402, "*client.InsufficientCreditsError"},
+		{403, "*client.AuthorizationError"},
+		{404, "*client.NotFoundError"},
+		{429, "*client.RateLimitError"},
+		{500, "*client.APIError"},
+		{502, "*client.APIError"},
+		{503, "*client.APIError"},
+		{504, "*client.APIError"},
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("status_%d", tc.status), func(t *testing.T) {
+			body := `{"error":{"type":"test","message":"test msg","request_id":"req-map"}}`
+			resp := mockResp(tc.status, body)
+			err := ParseError(resp)
+			if err == nil {
+				t.Fatal("expected non-nil error")
+			}
+
+			got := fmt.Sprintf("%T", err)
+			if got != tc.wantType {
+				t.Errorf("status %d: expected type %s, got %s", tc.status, tc.wantType, got)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// IsRetryable with wrapped errors
+// ---------------------------------------------------------------------------
+
+func TestIsRetryable_WrappedErrors(t *testing.T) {
+	t.Run("wrapped RateLimitError is retryable", func(t *testing.T) {
+		inner := &RateLimitError{Message: "slow down", RetryAfter: 10 * time.Second}
+		wrapped := fmt.Errorf("something went wrong: %w", inner)
+		if !IsRetryable(wrapped) {
+			t.Error("expected wrapped RateLimitError to be retryable")
+		}
+	})
+
+	t.Run("wrapped APIError 500 is retryable", func(t *testing.T) {
+		inner := &APIError{StatusCode: 500, Message: "crash"}
+		wrapped := fmt.Errorf("outer: %w", inner)
+		if !IsRetryable(wrapped) {
+			t.Error("expected wrapped APIError 500 to be retryable")
+		}
+	})
+
+	t.Run("wrapped APIError 400 is not retryable", func(t *testing.T) {
+		inner := &APIError{StatusCode: 400, Message: "bad"}
+		wrapped := fmt.Errorf("outer: %w", inner)
+		if IsRetryable(wrapped) {
+			t.Error("expected wrapped APIError 400 to not be retryable")
+		}
+	})
+
+	t.Run("nil error is not retryable", func(t *testing.T) {
+		if IsRetryable(nil) {
+			t.Error("expected nil error to not be retryable")
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// IsAuthError and IsCreditsError with wrapped errors
+// ---------------------------------------------------------------------------
+
+func TestIsAuthError_Wrapped(t *testing.T) {
+	inner := &AuthenticationError{Message: "bad key"}
+	wrapped := fmt.Errorf("outer: %w", inner)
+	if !IsAuthError(wrapped) {
+		t.Error("expected wrapped AuthenticationError to be detected")
+	}
+}
+
+func TestIsCreditsError_Wrapped(t *testing.T) {
+	inner := &InsufficientCreditsError{Message: "empty"}
+	wrapped := fmt.Errorf("outer: %w", inner)
+	if !IsCreditsError(wrapped) {
+		t.Error("expected wrapped InsufficientCreditsError to be detected")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ParseError — 429 with zero Retry-After
+// ---------------------------------------------------------------------------
+
+func TestParseError_429WithZeroRetryAfter(t *testing.T) {
+	body := `{"error":"rate limit"}`
+	resp := mockResp(http.StatusTooManyRequests, body, "Retry-After", "0")
+
+	err := ParseError(resp)
+
+	var rlErr *RateLimitError
+	if !errors.As(err, &rlErr) {
+		t.Fatalf("expected *RateLimitError, got %T: %v", err, err)
+	}
+	if rlErr.RetryAfter != 0 {
+		t.Errorf("expected RetryAfter 0, got %v", rlErr.RetryAfter)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ParseError — empty body for various status codes
+// ---------------------------------------------------------------------------
+
+func TestParseError_EmptyBodyVariousCodes(t *testing.T) {
+	tests := []struct {
+		status      int
+		wantType    string
+		wantFallback string
+	}{
+		{401, "*client.AuthenticationError", "Unauthorized"},
+		{402, "*client.InsufficientCreditsError", "Payment Required"},
+		{404, "*client.NotFoundError", "Not Found"},
+		{500, "*client.APIError", "Internal Server Error"},
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("empty_body_%d", tc.status), func(t *testing.T) {
+			resp := mockResp(tc.status, "")
+			err := ParseError(resp)
+			if err == nil {
+				t.Fatal("expected non-nil error")
+			}
+
+			got := fmt.Sprintf("%T", err)
+			if got != tc.wantType {
+				t.Errorf("expected type %s, got %s", tc.wantType, got)
+			}
+		})
+	}
+}

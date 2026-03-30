@@ -74,6 +74,8 @@ func TestParseFormat_CaseInsensitive(t *testing.T) {
 		{"JSONL", FormatJSONL},
 		{"Csv", FormatCSV},
 		{"  json  ", FormatJSON}, // leading/trailing whitespace
+		{" TABLE ", FormatTable},
+		{"\tjson\t", FormatJSON},
 	}
 
 	for _, tc := range tests {
@@ -86,6 +88,20 @@ func TestParseFormat_CaseInsensitive(t *testing.T) {
 				t.Errorf("ParseFormat(%q) = %q, want %q", tc.input, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestParseFormat_ErrorMessage(t *testing.T) {
+	_, err := ParseFormat("xml")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	errMsg := err.Error()
+	if !strings.Contains(errMsg, "xml") {
+		t.Errorf("error should mention the invalid format, got: %s", errMsg)
+	}
+	if !strings.Contains(errMsg, "table") || !strings.Contains(errMsg, "json") {
+		t.Errorf("error should list valid formats, got: %s", errMsg)
 	}
 }
 
@@ -143,6 +159,95 @@ func TestPrintJSON_Slice(t *testing.T) {
 	}
 }
 
+func TestPrintJSON_Nested(t *testing.T) {
+	sample := map[string]interface{}{
+		"outer": map[string]interface{}{
+			"inner": "value",
+			"list":  []interface{}{"a", "b"},
+		},
+	}
+
+	out := captureStdout(t, func() {
+		if err := PrintJSON(sample); err != nil {
+			t.Fatalf("PrintJSON returned error: %v", err)
+		}
+	})
+
+	var decoded map[string]interface{}
+	if err := json.Unmarshal([]byte(out), &decoded); err != nil {
+		t.Fatalf("PrintJSON output is not valid JSON: %v\noutput: %s", err, out)
+	}
+
+	outer, ok := decoded["outer"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected outer to be a map")
+	}
+	if outer["inner"] != "value" {
+		t.Errorf("inner = %v, want %q", outer["inner"], "value")
+	}
+}
+
+func TestPrintJSON_Nil(t *testing.T) {
+	out := captureStdout(t, func() {
+		if err := PrintJSON(nil); err != nil {
+			t.Fatalf("PrintJSON returned error: %v", err)
+		}
+	})
+
+	trimmed := strings.TrimSpace(out)
+	if trimmed != "null" {
+		t.Errorf("expected 'null', got %q", trimmed)
+	}
+}
+
+func TestPrintJSON_EmptyMap(t *testing.T) {
+	out := captureStdout(t, func() {
+		if err := PrintJSON(map[string]interface{}{}); err != nil {
+			t.Fatalf("PrintJSON returned error: %v", err)
+		}
+	})
+
+	trimmed := strings.TrimSpace(out)
+	if trimmed != "{}" {
+		t.Errorf("expected '{}', got %q", trimmed)
+	}
+}
+
+func TestPrintJSON_EmptySlice(t *testing.T) {
+	out := captureStdout(t, func() {
+		if err := PrintJSON([]string{}); err != nil {
+			t.Fatalf("PrintJSON returned error: %v", err)
+		}
+	})
+
+	trimmed := strings.TrimSpace(out)
+	if trimmed != "[]" {
+		t.Errorf("expected '[]', got %q", trimmed)
+	}
+}
+
+func TestPrintJSON_Struct(t *testing.T) {
+	type sample struct {
+		Name  string `json:"name"`
+		Count int    `json:"count"`
+	}
+	s := sample{Name: "test", Count: 42}
+
+	out := captureStdout(t, func() {
+		if err := PrintJSON(s); err != nil {
+			t.Fatalf("PrintJSON returned error: %v", err)
+		}
+	})
+
+	var decoded map[string]interface{}
+	if err := json.Unmarshal([]byte(out), &decoded); err != nil {
+		t.Fatalf("PrintJSON output is not valid JSON: %v\noutput: %s", err, out)
+	}
+	if decoded["name"] != "test" {
+		t.Errorf("name = %v, want %q", decoded["name"], "test")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // PrintJSONL
 // ---------------------------------------------------------------------------
@@ -193,6 +298,47 @@ func TestPrintJSONL_Compact(t *testing.T) {
 	// Compact JSON should not contain newlines within the object.
 	if strings.Count(trimmed, "\n") != 0 {
 		t.Errorf("expected compact single-line JSON, got:\n%s", out)
+	}
+}
+
+func TestPrintJSONL_MultipleObjects(t *testing.T) {
+	items := []map[string]string{
+		{"id": "1"},
+		{"id": "2"},
+		{"id": "3"},
+	}
+
+	out := captureStdout(t, func() {
+		for _, item := range items {
+			if err := PrintJSONL(item); err != nil {
+				t.Fatalf("PrintJSONL returned error: %v", err)
+			}
+		}
+	})
+
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("expected 3 lines, got %d:\n%s", len(lines), out)
+	}
+
+	for i, line := range lines {
+		var decoded map[string]string
+		if err := json.Unmarshal([]byte(line), &decoded); err != nil {
+			t.Fatalf("line %d is not valid JSON: %v\nline: %s", i, err, line)
+		}
+	}
+}
+
+func TestPrintJSONL_Nil(t *testing.T) {
+	out := captureStdout(t, func() {
+		if err := PrintJSONL(nil); err != nil {
+			t.Fatalf("PrintJSONL returned error: %v", err)
+		}
+	})
+
+	trimmed := strings.TrimSpace(out)
+	if trimmed != "null" {
+		t.Errorf("expected 'null', got %q", trimmed)
 	}
 }
 

@@ -1,12 +1,14 @@
 package commands
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/dfir-lab/dfir-cli/internal/client"
 	"github.com/dfir-lab/dfir-cli/internal/output"
@@ -87,16 +89,17 @@ func NewEnrichmentCmd() *cobra.Command {
 
 func newEnrichmentLookupCmd() *cobra.Command {
 	var (
-		flagIP        string
-		flagDomain    string
-		flagURL       string
-		flagHash      string
-		flagEmail     string
-		flagIOC       string
-		flagType      string
-		flagBatch     string
-		flagProviders string
-		flagMinScore  int
+		flagIP          string
+		flagDomain      string
+		flagURL         string
+		flagHash        string
+		flagEmail       string
+		flagIOC         string
+		flagType        string
+		flagBatch       string
+		flagProviders   string
+		flagMinScore    int
+		flagConcurrency int
 	)
 
 	cmd := &cobra.Command{
@@ -114,16 +117,17 @@ or stdin.`,
   echo "1.2.3.4" | dfir-cli enrichment lookup --type ip`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runEnrichmentLookup(cmd, enrichmentLookupFlags{
-				ip:        flagIP,
-				domain:    flagDomain,
-				url:       flagURL,
-				hash:      flagHash,
-				email:     flagEmail,
-				ioc:       flagIOC,
-				iocType:   flagType,
-				batch:     flagBatch,
-				providers: flagProviders,
-				minScore:  flagMinScore,
+				ip:          flagIP,
+				domain:      flagDomain,
+				url:         flagURL,
+				hash:        flagHash,
+				email:       flagEmail,
+				ioc:         flagIOC,
+				iocType:     flagType,
+				batch:       flagBatch,
+				providers:   flagProviders,
+				minScore:    flagMinScore,
+				concurrency: flagConcurrency,
 			})
 		},
 	}
@@ -142,22 +146,24 @@ or stdin.`,
 	flags.StringVar(&flagBatch, "batch", "", "File with one IOC per line (use - for stdin)")
 	flags.StringVar(&flagProviders, "providers", "", "Comma-separated provider filter")
 	flags.IntVar(&flagMinScore, "min-score", 0, "Only show providers above this score (0-100)")
+	flags.IntVar(&flagConcurrency, "concurrency", 5, "Parallel requests for batch mode (1-20)")
 
 	return cmd
 }
 
 // enrichmentLookupFlags holds the parsed flag values for the lookup subcommand.
 type enrichmentLookupFlags struct {
-	ip        string
-	domain    string
-	url       string
-	hash      string
-	email     string
-	ioc       string
-	iocType   string
-	batch     string
-	providers string
-	minScore  int
+	ip          string
+	domain      string
+	url         string
+	hash        string
+	email       string
+	ioc         string
+	iocType     string
+	batch       string
+	providers   string
+	minScore    int
+	concurrency int
 }
 
 // ---------------------------------------------------------------------------
@@ -197,6 +203,12 @@ func runEnrichmentLookup(cmd *cobra.Command, f enrichmentLookupFlags) error {
 		return err
 	}
 
+	// Validate concurrency.
+	concurrency := f.concurrency
+	if concurrency < 1 || concurrency > 20 {
+		return fmt.Errorf("--concurrency must be between 1 and 20, got %d", concurrency)
+	}
+
 	// Chunk indicators into batches of batchAPILimit.
 	chunks := chunkIndicators(indicators, batchAPILimit)
 
@@ -206,15 +218,60 @@ func runEnrichmentLookup(cmd *cobra.Command, f enrichmentLookupFlags) error {
 	spin := output.NewSpinner("Enriching indicators...")
 	output.StartSpinner(spin)
 
-	for _, chunk := range chunks {
-		req := &client.EnrichmentRequest{Indicators: chunk}
-		result, resp, apiErr := apiClient.EnrichmentLookup(ctx, req)
-		if apiErr != nil {
-			output.StopSpinner(spin)
-			return classifyEnrichmentError(apiErr)
+	if len(chunks) <= 1 {
+		// Single chunk: no need for goroutines.
+		for _, chunk := range chunks {
+			req := &client.EnrichmentRequest{Indicators: chunk}
+			result, resp, apiErr := apiClient.EnrichmentLookup(ctx, req)
+			if apiErr != nil {
+				output.StopSpinner(spin)
+				return classifyEnrichmentError(apiErr)
+			}
+			allResults = append(allResults, result.Results...)
+			lastMeta = resp
 		}
-		allResults = append(allResults, result.Results...)
-		lastMeta = resp
+	} else {
+		// Multiple chunks: use a semaphore pattern for concurrent processing.
+		// Create a cancellable context so we stop on first error.
+		concCtx, concCancel := context.WithCancel(ctx)
+		defer concCancel()
+
+		sem := make(chan struct{}, concurrency)
+		var mu sync.Mutex
+		var firstErr error
+
+		var wg sync.WaitGroup
+		for _, chunk := range chunks {
+			wg.Add(1)
+			sem <- struct{}{} // acquire semaphore
+			go func(chunk []client.Indicator) {
+				defer wg.Done()
+				defer func() { <-sem }() // release semaphore
+
+				req := &client.EnrichmentRequest{Indicators: chunk}
+				result, resp, apiErr := apiClient.EnrichmentLookup(concCtx, req)
+
+				mu.Lock()
+				defer mu.Unlock()
+				if apiErr != nil && firstErr == nil {
+					firstErr = apiErr
+					concCancel() // cancel remaining in-flight requests
+					return
+				}
+				if result != nil {
+					allResults = append(allResults, result.Results...)
+				}
+				if resp != nil {
+					lastMeta = resp
+				}
+			}(chunk)
+		}
+		wg.Wait()
+
+		if firstErr != nil {
+			output.StopSpinner(spin)
+			return classifyEnrichmentError(firstErr)
+		}
 	}
 
 	output.StopSpinner(spin)

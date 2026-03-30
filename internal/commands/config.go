@@ -117,6 +117,12 @@ func newConfigInitCmd() *cobra.Command {
 			}
 
 			fmt.Println()
+			switch p.APIKeySource {
+			case "keychain":
+				fmt.Println("API key stored in system keychain.")
+			default:
+				fmt.Println("API key stored in config file.")
+			}
 			fmt.Printf("Configuration saved successfully! (profile: %s)\n", profile)
 			fmt.Println()
 			fmt.Println("Next steps:")
@@ -174,6 +180,12 @@ func newConfigSetCmd() *cobra.Command {
 			displayValue := value
 			if key == "api-key" {
 				displayValue = config.MaskAPIKey(value)
+				switch p.APIKeySource {
+				case "keychain":
+					fmt.Println("API key stored in system keychain.")
+				default:
+					fmt.Println("API key stored in config file.")
+				}
 			}
 			fmt.Printf("Set %q to %q (profile: %s)\n", key, displayValue, profile)
 			return nil
@@ -247,8 +259,13 @@ func newConfigListCmd() *cobra.Command {
 				apiKey = config.MaskAPIKey(apiKey)
 			}
 
+			apiKeySource := p.APIKeySource
+			if apiKeySource == "" {
+				apiKeySource = "config"
+			}
+
 			fmt.Printf("Profile: %s\n\n", profile)
-			fmt.Printf("  api-key:        %s\n", apiKey)
+			fmt.Printf("  api-key:        %s (source: %s)\n", apiKey, apiKeySource)
 			fmt.Printf("  api-url:        %s\n", p.APIURL)
 			fmt.Printf("  output-format:  %s\n", p.OutputFormat)
 			fmt.Printf("  timeout:        %s\n", p.Timeout)

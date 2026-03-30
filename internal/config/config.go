@@ -36,8 +36,9 @@ const (
 
 // Profile holds the configuration for a single named profile.
 type Profile struct {
-	APIKey       string        `yaml:"api_key"       mapstructure:"api_key"`
-	APIURL       string        `yaml:"api_url"       mapstructure:"api_url"`
+	APIKey       string        `yaml:"api_key"        mapstructure:"api_key"`
+	APIKeySource string        `yaml:"api_key_source" mapstructure:"api_key_source"` // "keychain", "config", or ""
+	APIURL       string        `yaml:"api_url"        mapstructure:"api_url"`
 	OutputFormat string        `yaml:"output_format"  mapstructure:"output_format"`
 	Timeout      time.Duration `yaml:"timeout"        mapstructure:"timeout"`
 	Concurrency  int           `yaml:"concurrency"    mapstructure:"concurrency"`
@@ -154,11 +155,26 @@ func Load(profile string) (*Profile, error) {
 	// Apply defaults for any zero-valued fields that should have defaults.
 	applyDefaults(p)
 
+	// If the API key source is "keychain", try to retrieve from the system keychain.
+	if p.APIKeySource == "keychain" {
+		secret, err := GetKeychain(profile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to read API key from keychain: %v\n", err)
+		}
+		if secret != "" {
+			p.APIKey = secret
+		}
+	}
+
 	return p, nil
 }
 
 // Save writes the given profile into the configuration file under the
 // specified profile name. If the config file does not exist it is created.
+// If an API key is present, Save attempts to store it in the system keychain
+// first. On success the plaintext key is cleared from the config file and
+// api_key_source is set to "keychain". If the keychain is unavailable the key
+// is stored in the config file with api_key_source set to "config".
 func Save(profile string, p *Profile) error {
 	if profile == "" {
 		profile = defaultProfileKey
@@ -170,6 +186,20 @@ func Save(profile string, p *Profile) error {
 	v, err := readConfigOrNew()
 	if err != nil {
 		return fmt.Errorf("reading config: %w", err)
+	}
+
+	// Try to store the API key in the system keychain.
+	if p.APIKey != "" {
+		if err := SetKeychain(profile, p.APIKey); err == nil {
+			// Keychain succeeded: clear plaintext from config.
+			p.APIKeySource = "keychain"
+			saved := *p
+			saved.APIKey = ""
+			setProfileInViper(v, profile, &saved)
+			return writeConfig(v)
+		}
+		// Keychain unavailable: fall back to storing in config file.
+		p.APIKeySource = "config"
 	}
 
 	setProfileInViper(v, profile, p)
@@ -224,6 +254,14 @@ func ListProfiles() (map[string]*Profile, string, error) {
 			return nil, "", fmt.Errorf("unmarshalling profile %q: %w", name, err)
 		}
 		applyDefaults(p)
+
+		// Resolve keychain-sourced API keys.
+		if p.APIKeySource == "keychain" {
+			if secret, err := GetKeychain(name); err == nil && secret != "" {
+				p.APIKey = secret
+			}
+		}
+
 		profiles[name] = p
 	}
 
@@ -247,6 +285,19 @@ func WriteInitialConfig(profile string, p *Profile) error {
 
 	v := viper.New()
 	v.Set("active_profile", profile)
+
+	// Try to store the API key in the system keychain.
+	if p.APIKey != "" {
+		if err := SetKeychain(profile, p.APIKey); err == nil {
+			p.APIKeySource = "keychain"
+			saved := *p
+			saved.APIKey = ""
+			setProfileInViper(v, profile, &saved)
+			return writeConfig(v)
+		}
+		p.APIKeySource = "config"
+	}
+
 	setProfileInViper(v, profile, p)
 
 	return writeConfig(v)
@@ -324,13 +375,13 @@ func writeConfig(v *viper.Viper) error {
 	}
 
 	path := Path()
-	tmpPath := path + ".tmp.yaml"
 
-	// Create temp file with restrictive permissions from the start.
-	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, filePerm)
+	// Create temp file with an unpredictable name and restrictive permissions.
+	f, err := os.CreateTemp(Dir(), "config-*.tmp.yaml")
 	if err != nil {
 		return fmt.Errorf("creating temp config file: %w", err)
 	}
+	tmpPath := f.Name()
 	f.Close()
 
 	// Write config content to the temp file.
@@ -361,6 +412,7 @@ func writeConfig(v *viper.Viper) error {
 func setProfileInViper(v *viper.Viper, name string, p *Profile) {
 	prefix := "profiles." + name + "."
 	v.Set(prefix+"api_key", p.APIKey)
+	v.Set(prefix+"api_key_source", p.APIKeySource)
 	v.Set(prefix+"api_url", p.APIURL)
 	v.Set(prefix+"output_format", p.OutputFormat)
 	v.Set(prefix+"timeout", p.Timeout.String())

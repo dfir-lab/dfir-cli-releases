@@ -578,3 +578,227 @@ func TestDo_RetriesExhausted(t *testing.T) {
 		t.Fatalf("expected 4 total requests (initial + 3 retries), got %d", total)
 	}
 }
+
+func TestDo_RequestBodyMarshaledCorrectly(t *testing.T) {
+	type customPayload struct {
+		Name  string `json:"name"`
+		Count int    `json:"count"`
+	}
+
+	var received customPayload
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if err := json.Unmarshal(body, &received); err != nil {
+			t.Errorf("failed to unmarshal: %v", err)
+		}
+		if ct := r.Header.Get("Content-Type"); ct != "application/json" {
+			t.Errorf("expected Content-Type application/json, got %q", ct)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(successEnvelope(map[string]string{"ok": "true"}))
+	}))
+	defer ts.Close()
+
+	c := testClient(ts)
+
+	_, err := c.Do(context.Background(), http.MethodPost, "/submit", &customPayload{Name: "test", Count: 42}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if received.Name != "test" {
+		t.Errorf("expected Name=test, got %q", received.Name)
+	}
+	if received.Count != 42 {
+		t.Errorf("expected Count=42, got %d", received.Count)
+	}
+}
+
+func TestDo_UserAgentHeader(t *testing.T) {
+	var receivedUA string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedUA = r.Header.Get("User-Agent")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(successEnvelope(map[string]string{"ok": "true"}))
+	}))
+	defer ts.Close()
+
+	c := testClient(ts) // user-agent is "dfir-cli-test/1.0"
+
+	_, err := c.Do(context.Background(), http.MethodGet, "/ua", nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedUA != "dfir-cli-test/1.0" {
+		t.Errorf("expected User-Agent=dfir-cli-test/1.0, got %q", receivedUA)
+	}
+}
+
+func TestDo_RetryAfterHeaderVariousValues(t *testing.T) {
+	tests := []struct {
+		name       string
+		retryAfter string
+	}{
+		{"zero seconds", "0"},
+		{"one second", "1"},
+		{"large value", "3600"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var hits int64
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				n := atomic.AddInt64(&hits, 1)
+				if n == 1 {
+					w.Header().Set("Retry-After", tc.retryAfter)
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusTooManyRequests)
+					w.Write(errorEnvelope("rate_limit", "rate_limited", "slow down", "req-retry"))
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write(successEnvelope(map[string]string{"ok": "true"}))
+			}))
+			defer ts.Close()
+
+			c := testClient(ts)
+			c.retryBaseDelay = 1 * time.Millisecond // keep tests fast
+
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			_, err := c.Do(ctx, http.MethodGet, "/retry-after", nil, nil)
+			if err != nil {
+				// Large Retry-After values may cause context deadline -- that's ok.
+				if tc.retryAfter == "3600" {
+					return // expected to timeout
+				}
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestDo_NonJSONResponseBody(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("this is not json"))
+	}))
+	defer ts.Close()
+
+	c := testClient(ts)
+
+	_, err := c.Do(context.Background(), http.MethodGet, "/plain", nil, nil)
+	if err == nil {
+		t.Fatal("expected error for non-JSON response, got nil")
+	}
+}
+
+func TestDo_VeryLargeResponseBody(t *testing.T) {
+	// Build a large data payload.
+	largeMap := make(map[string]string)
+	for i := 0; i < 1000; i++ {
+		key := "key_" + string(rune('A'+i%26)) + "_" + time.Now().Format("150405")
+		largeMap[key] = "value_with_some_padding_to_make_it_larger_" + key
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(successEnvelope(largeMap))
+	}))
+	defer ts.Close()
+
+	c := testClient(ts)
+
+	var result map[string]string
+	_, err := c.Do(context.Background(), http.MethodGet, "/large", nil, &result)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) == 0 {
+		t.Fatal("expected non-empty result for large response")
+	}
+}
+
+func TestDo_ConcurrentCalls(t *testing.T) {
+	var hits int64
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt64(&hits, 1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(successEnvelope(map[string]string{"ok": "true"}))
+	}))
+	defer ts.Close()
+
+	c := testClient(ts)
+
+	const numGoroutines = 20
+	errs := make(chan error, numGoroutines)
+
+	for i := 0; i < numGoroutines; i++ {
+		go func() {
+			var result map[string]string
+			_, err := c.Do(context.Background(), http.MethodGet, "/concurrent", nil, &result)
+			errs <- err
+		}()
+	}
+
+	for i := 0; i < numGoroutines; i++ {
+		if err := <-errs; err != nil {
+			t.Errorf("concurrent call %d failed: %v", i, err)
+		}
+	}
+
+	total := atomic.LoadInt64(&hits)
+	if total != numGoroutines {
+		t.Errorf("expected %d hits, got %d", numGoroutines, total)
+	}
+}
+
+func TestDoRaw_ReturnsRawWithoutJSONDecoding(t *testing.T) {
+	rawData := "this is raw binary data \x00\x01\x02 not json"
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(rawData))
+	}))
+	defer ts.Close()
+
+	c := testClient(ts)
+
+	resp, err := c.DoRaw(context.Background(), http.MethodGet, "/raw", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != rawData {
+		t.Errorf("expected raw data preserved, got %q", string(body))
+	}
+}
+
+func TestDoRaw_ErrorStatusNotParsed(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("not found"))
+	}))
+	defer ts.Close()
+
+	c := testClient(ts)
+
+	// DoRaw should return the raw response even for error status codes.
+	resp, err := c.DoRaw(context.Background(), http.MethodGet, "/missing", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", resp.StatusCode)
+	}
+}

@@ -26,6 +26,14 @@ func NewPhishingCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newPhishingAnalyzeCmd())
+	cmd.AddCommand(newPhishingDNSCmd())
+	cmd.AddCommand(newPhishingBlacklistCmd())
+	cmd.AddCommand(newPhishingGeoIPCmd())
+	cmd.AddCommand(newPhishingSafeBrowsingCmd())
+	cmd.AddCommand(newPhishingCheckPhishCmd())
+	cmd.AddCommand(newPhishingURLScanCmd())
+	cmd.AddCommand(newPhishingURLExpandCmd())
+	cmd.AddCommand(newPhishingEnrichCmd())
 
 	return cmd
 }

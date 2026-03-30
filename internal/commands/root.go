@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/dfir-lab/dfir-cli/internal/config"
@@ -39,6 +40,17 @@ Authenticate with an API key from https://dfir-lab.ch and start investigating.`,
 			q, _ := cmd.Flags().GetBool("quiet")
 			if v && q {
 				return fmt.Errorf("--verbose and --quiet cannot be used together")
+			}
+
+			// Handle --json / -j shorthand.
+			j, _ := cmd.Flags().GetBool("json")
+			if j && q {
+				return fmt.Errorf("--json and --quiet cannot be used together")
+			}
+			if j {
+				if f := cmd.Flags().Lookup("output"); f != nil {
+					_ = f.Value.Set("json")
+				}
 			}
 
 			// Warn when --api-key is passed on the command line.
@@ -82,6 +94,7 @@ func init() {
 	_ = rootCmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"table", "json", "jsonl", "csv"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	pflags.BoolP("json", "j", false, "Shorthand for --output json")
 	pflags.Bool("no-color", false, "Disable colored output")
 	pflags.BoolP("verbose", "v", false, "Show debug information (HTTP requests/responses)")
 	pflags.BoolP("quiet", "q", false, "Minimal output")
@@ -111,6 +124,7 @@ func init() {
 	rootCmd.AddCommand(NewPhishingCmd())
 	rootCmd.AddCommand(NewExposureCmd())
 	rootCmd.AddCommand(NewCreditsCmd())
+	rootCmd.AddCommand(NewUsageCmd())
 
 	// Phase 6 commands
 	rootCmd.AddCommand(NewUpdateCmd())
@@ -152,21 +166,24 @@ func Execute() error {
 
 // loadProfileCached loads the config profile, caching the result for the
 // duration of the process. Returns nil if the config file does not exist.
-var cachedProfile *config.Profile
+var (
+	cachedProfile     *config.Profile
+	cachedProfileOnce sync.Once
+)
 
 func loadProfile() *config.Profile {
-	if cachedProfile != nil {
-		return cachedProfile
-	}
-	p, err := config.Load(GetProfile())
-	if err != nil {
-		return nil
-	}
-	cachedProfile = p
-	return p
+	cachedProfileOnce.Do(func() {
+		p, err := config.Load(GetProfile())
+		if err != nil {
+			return
+		}
+		cachedProfile = p
+	})
+	return cachedProfile
 }
 
-// GetAPIKey returns the API key from flag, env var, or config file (in that order).
+// GetAPIKey returns the API key using the following precedence:
+// flag > env var > keychain > config file.
 func GetAPIKey() string {
 	// 1. Explicit flag
 	if v := rootCmd.PersistentFlags().Lookup("api-key"); v != nil && v.Changed {
@@ -176,7 +193,7 @@ func GetAPIKey() string {
 	if key := viper.GetString("api_key"); key != "" {
 		return key
 	}
-	// 3. Config file profile
+	// 3. Config file profile (Load already resolves keychain source)
 	if p := loadProfile(); p != nil && p.APIKey != "" {
 		return p.APIKey
 	}
@@ -280,6 +297,7 @@ COMMANDS:
 
 ACCOUNT:
   credits       View and manage API credit balance
+  usage         Display API usage statistics
 
 CONFIGURATION:
   config        Manage CLI configuration and profiles

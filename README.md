@@ -14,13 +14,15 @@ A powerful command-line toolkit for SOC analysts and incident responders, powere
 ## Features
 
 - **Phishing email analysis** -- standard and AI-enhanced detection
+- **Phishing toolkit** -- DNS analysis, blacklist checks, GeoIP, Safe Browsing, CheckPhish, URLScan, URL expansion, and URL enrichment
 - **IOC enrichment** -- IP, domain, URL, hash, and email lookups with multi-provider results
-- **External exposure scanning** for domains
-- **Multiple output formats** -- table, JSON, JSONL
-- **Batch processing** from files or stdin
+- **External exposure scanning** for domains with concurrent batch support
+- **API usage tracking** -- view request counts and credit consumption by service
+- **Multiple output formats** -- table, JSON, JSONL, and `--json`/`-j` shorthand
+- **Batch processing** from files or stdin with configurable `--concurrency`
 - **Shell completions** for bash, zsh, and fish
 - **Cross-platform** -- macOS, Linux, Windows
-- **Configurable profiles** with secure API key storage
+- **Configurable profiles** with secure API key storage via system keychain
 
 ---
 
@@ -125,9 +127,45 @@ dfir-cli config init --profile staging
 dfir-cli enrichment lookup --ip 1.2.3.4 --profile staging
 ```
 
+### Secure key storage
+
+When available, API keys are stored in the system keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service) rather than in plaintext. Falls back to the config file on headless systems.
+
 ### Config location
 
 Configuration is stored at `~/.config/dfir-cli/config.yaml`.
+
+---
+
+## Command Reference
+
+```
+dfir-cli
+├── phishing
+│   ├── analyze           Analyze emails for phishing indicators (--ai for AI-enhanced)
+│   ├── dns               DNS analysis on a domain
+│   ├── blacklist         Check IPs against DNS blacklists
+│   ├── geoip             GeoIP lookup for IPs
+│   ├── safe-browsing     Check URLs against Google Safe Browsing
+│   ├── checkphish        Check a URL with CheckPhish
+│   ├── urlscan           Scan a URL with URLScan.io
+│   ├── url-expand        Expand shortened URLs
+│   └── enrich            Enrich a URL with threat intelligence
+├── enrichment
+│   └── lookup            Enrich IOCs across threat intelligence providers
+├── exposure
+│   └── scan              Scan domains for external exposure
+├── credits               View API credit balance
+├── usage                 View API usage statistics
+├── config
+│   ├── init              Interactive first-run setup
+│   ├── set               Set a configuration value
+│   ├── get               Get a configuration value
+│   └── list              List all configuration values
+├── version               Print version and build information
+├── update                Check for and install updates
+└── completion            Generate shell completion scripts
+```
 
 ---
 
@@ -147,6 +185,33 @@ Use AI-enhanced analysis for deeper inspection:
 dfir-cli phishing analyze --file suspicious.eml --ai
 ```
 
+### Phishing toolkit
+
+```bash
+# DNS analysis for a domain
+dfir-cli phishing dns --domain suspicious-site.com
+
+# Check IPs against blacklists
+dfir-cli phishing blacklist --ip 203.0.113.42
+dfir-cli phishing blacklist --batch ips.txt
+
+# GeoIP lookup
+dfir-cli phishing geoip --ip 203.0.113.42
+
+# Check URLs against Google Safe Browsing
+dfir-cli phishing safe-browsing --url https://suspicious-site.com
+
+# Scan a URL with CheckPhish or URLScan.io
+dfir-cli phishing checkphish --url https://suspicious-login.com
+dfir-cli phishing urlscan --url https://suspicious-login.com
+
+# Expand shortened URLs
+dfir-cli phishing url-expand --url https://bit.ly/abc123
+
+# Enrich a URL with threat intelligence
+dfir-cli phishing enrich --url https://suspicious-site.com
+```
+
 ### IOC enrichment
 
 Look up a single indicator:
@@ -159,10 +224,10 @@ dfir-cli enrichment lookup --hash 44d88612fea8a8f36de82e1278abb02f
 dfir-cli enrichment lookup --email attacker@example.com
 ```
 
-Batch enrichment from a file (one indicator per line):
+Batch enrichment from a file with concurrent requests:
 
 ```bash
-dfir-cli enrichment lookup --batch iocs.txt
+dfir-cli enrichment lookup --batch iocs.txt --concurrency 10
 ```
 
 ### Exposure scanning
@@ -173,12 +238,20 @@ Scan a domain for external exposure:
 dfir-cli exposure scan --domain example.com
 ```
 
-### Credits
+Batch scan with concurrency:
 
-Check your remaining API credits:
+```bash
+dfir-cli exposure scan --batch domains.txt --concurrency 5
+```
+
+### Account
+
+Check your remaining API credits and usage:
 
 ```bash
 dfir-cli credits
+dfir-cli usage
+dfir-cli usage --period 2026-02 --service enrichment
 ```
 
 ### Piping and scripting
@@ -186,25 +259,25 @@ dfir-cli credits
 Pipe indicators from stdin:
 
 ```bash
-cat iocs.txt | dfir-cli enrichment lookup --output json
+cat iocs.txt | dfir-cli enrichment lookup -j
 ```
 
 Extract specific fields with `jq`:
 
 ```bash
-dfir-cli enrichment lookup --ip 1.2.3.4 --output json | jq '.verdict'
+dfir-cli enrichment lookup --ip 1.2.3.4 --json | jq '.verdict'
 ```
 
 ---
 
 ## Output Formats
 
-| Format | Flag              | Description                        |
-|--------|-------------------|------------------------------------|
-| Table  | *(default)*       | Human-readable tabular output      |
-| JSON   | `--output json`   | Structured JSON for scripting      |
-| JSONL  | `--output jsonl`  | One JSON object per line           |
-| Quiet  | `--quiet`         | Verdict only, minimal output       |
+| Format | Flag                      | Description                        |
+|--------|---------------------------|------------------------------------|
+| Table  | *(default)*               | Human-readable tabular output      |
+| JSON   | `--output json` or `-j`   | Structured JSON for scripting      |
+| JSONL  | `--output jsonl`          | One JSON object per line           |
+| Quiet  | `--quiet`                 | Verdict only, minimal output       |
 
 ---
 

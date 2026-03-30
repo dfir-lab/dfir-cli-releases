@@ -115,3 +115,13 @@ func readLines(path string) ([]string, error) {
 	}
 	return lines, scanner.Err()
 }
+
+// titleCase converts the first character of s to uppercase and the rest to
+// lowercase. This replaces the deprecated strings.Title for simple ASCII
+// strings (service names, field names, etc.).
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + strings.ToLower(s[1:])
+}

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -36,9 +37,10 @@ overall risk score.`,
 
 func newExposureScanCmd() *cobra.Command {
 	var (
-		domain     string
-		targetType string
-		batchFile  string
+		domain      string
+		targetType  string
+		batchFile   string
+		concurrency int
 	)
 
 	cmd := &cobra.Command{
@@ -58,18 +60,24 @@ queried. A spinner is displayed while waiting.`,
   dfir-cli exposure scan --batch domains.txt
   echo "example.com" | dfir-cli exposure scan`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runExposureScan(cmd, domain, targetType, batchFile)
+			return runExposureScan(cmd, domain, targetType, batchFile, concurrency)
 		},
 	}
 
 	cmd.Flags().StringVar(&domain, "domain", "", "Target domain to scan")
 	cmd.Flags().StringVar(&targetType, "target-type", "auto", "Target type hint: domain, ip, auto")
 	cmd.Flags().StringVar(&batchFile, "batch", "", "File with one domain per line (use - for stdin)")
+	cmd.Flags().IntVar(&concurrency, "concurrency", 5, "Parallel requests for batch mode (1-20)")
 
 	return cmd
 }
 
-func runExposureScan(cmd *cobra.Command, domain, targetType, batchFile string) error {
+func runExposureScan(cmd *cobra.Command, domain, targetType, batchFile string, concurrency int) error {
+	// Validate concurrency.
+	if concurrency < 1 || concurrency > 20 {
+		return fmt.Errorf("--concurrency must be between 1 and 20, got %d", concurrency)
+	}
+
 	// Resolve output format early.
 	format, err := output.ParseFormat(GetOutputFormat())
 	if err != nil {
@@ -111,28 +119,80 @@ func runExposureScan(cmd *cobra.Command, domain, targetType, batchFile string) e
 	isBatch := len(targets) > 1
 	var exitCode int
 
-	for i, target := range targets {
-		if isBatch && !quiet {
-			fmt.Fprintf(os.Stderr, "[%d/%d] Scanning %s...\n", i+1, len(targets), target)
-		}
-
-		code, scanErr := runSingleExposureScan(ctx, c, target, targetType, format, quiet)
+	if !isBatch {
+		// Single target path.
+		code, scanErr := runSingleExposureScan(ctx, c, targets[0], targetType, format, quiet)
 		if scanErr != nil {
-			fmt.Fprintf(os.Stderr, "Error scanning %s: %v\n", target, scanErr)
-			if exitCode == 0 {
-				exitCode = 1
-			}
-			continue
-		}
-
-		// Keep the highest severity exit code.
-		if code > exitCode {
+			fmt.Fprintf(os.Stderr, "Error scanning %s: %v\n", targets[0], scanErr)
+			exitCode = 1
+		} else if code > exitCode {
 			exitCode = code
 		}
+	} else {
+		// Multiple targets: fetch results concurrently, render sequentially.
+		type scanResult struct {
+			target string
+			result *client.ExposureScanResponse
+			resp   *client.Response
+			err    error
+		}
 
-		// Separator between batch results.
-		if isBatch && i < len(targets)-1 && format == output.FormatTable && !quiet {
-			fmt.Println()
+		results := make([]scanResult, len(targets))
+		sem := make(chan struct{}, concurrency)
+		var wg sync.WaitGroup
+
+		for i, target := range targets {
+			wg.Add(1)
+			sem <- struct{}{} // acquire semaphore
+			go func(i int, target string) {
+				defer wg.Done()
+				defer func() { <-sem }() // release semaphore
+
+				if !quiet {
+					fmt.Fprintf(os.Stderr, "[%d/%d] Scanning %s...\n", i+1, len(targets), target)
+				}
+
+				req := &client.ExposureScanRequest{
+					Target:     target,
+					TargetType: targetType,
+				}
+				result, resp, err := c.ExposureScan(ctx, req)
+				results[i] = scanResult{target: target, result: result, resp: resp, err: err}
+			}(i, target)
+		}
+		wg.Wait()
+
+		// Render results sequentially (safe for stdout).
+		var lastResp *client.Response
+		for i, r := range results {
+			if r.err != nil {
+				fmt.Fprintf(os.Stderr, "Error scanning %s: %v\n", r.target, r.err)
+				if client.IsCreditsError(r.err) {
+					exitCode = 4
+				} else if exitCode == 0 {
+					exitCode = 1
+				}
+				continue
+			}
+
+			if r.resp != nil {
+				lastResp = r.resp
+			}
+
+			code := renderExposureResult(r.result, r.resp, format, quiet)
+			if code > exitCode {
+				exitCode = code
+			}
+
+			// Separator between batch results (only for table format).
+			if i < len(results)-1 && format == output.FormatTable && !quiet {
+				fmt.Println()
+			}
+		}
+
+		// Persist credit state once after all scans.
+		if lastResp != nil {
+			_ = SaveCreditState(&lastResp.Meta)
 		}
 	}
 
@@ -179,29 +239,34 @@ func runSingleExposureScan(
 		_ = SaveCreditState(&resp.Meta)
 	}
 
-	// Render output.
+	code := renderExposureResult(result, resp, format, quiet)
+	return code, nil
+}
+
+// renderExposureResult renders a single exposure result and returns the exit code.
+// This function is safe to call from the main goroutine only.
+func renderExposureResult(result *client.ExposureScanResponse, resp *client.Response, format output.Format, quiet bool) int {
 	switch format {
 	case output.FormatJSON:
 		payload := map[string]interface{}{
 			"data": result,
-			"meta": resp.Meta,
 		}
-		if err := output.PrintJSON(payload); err != nil {
-			return 1, err
+		if resp != nil {
+			payload["meta"] = resp.Meta
 		}
+		_ = output.PrintJSON(payload)
 
 	case output.FormatJSONL:
 		payload := map[string]interface{}{
 			"data": result,
-			"meta": resp.Meta,
 		}
-		if err := output.PrintJSONL(payload); err != nil {
-			return 1, err
+		if resp != nil {
+			payload["meta"] = resp.Meta
 		}
+		_ = output.PrintJSONL(payload)
 
 	default:
 		if quiet {
-			// Quiet mode: LEVEL SCORE TARGET
 			fmt.Printf("%s %d %s\n",
 				strings.ToUpper(result.RiskLevel),
 				result.RiskScore,
@@ -212,7 +277,7 @@ func runSingleExposureScan(
 		}
 	}
 
-	return exposureExitCode(result.RiskLevel), nil
+	return exposureExitCode(result.RiskLevel)
 }
 
 // printExposureTable renders the human-friendly table output.

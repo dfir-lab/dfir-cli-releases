@@ -820,3 +820,436 @@ func TestDirXDGConfigHome(t *testing.T) {
 		t.Errorf("Dir() = %q, want %q", got, want)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// TestValidateProfileName additional edge cases
+// ---------------------------------------------------------------------------
+
+func TestValidateProfileName_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name    string
+		profile string
+		wantErr bool
+	}{
+		{
+			name:    "single character",
+			profile: "a",
+			wantErr: false,
+		},
+		{
+			name:    "hyphens and underscores",
+			profile: "my-profile_v2",
+			wantErr: false,
+		},
+		{
+			name:    "numeric only",
+			profile: "12345",
+			wantErr: false,
+		},
+		{
+			name:    "newline in name",
+			profile: "bad\nname",
+			wantErr: true,
+		},
+		{
+			name:    "carriage return in name",
+			profile: "bad\rname",
+			wantErr: true,
+		},
+		{
+			name:    "multiple dots",
+			profile: "a.b.c",
+			wantErr: true,
+		},
+		{
+			name:    "leading space",
+			profile: " leading",
+			wantErr: true,
+		},
+		{
+			name:    "trailing space",
+			profile: "trailing ",
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateProfileName(tc.profile)
+			if tc.wantErr && err == nil {
+				t.Error("expected error, got nil")
+			}
+			if !tc.wantErr && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestMaskAPIKey additional edge cases
+// ---------------------------------------------------------------------------
+
+func TestMaskAPIKey_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+		want string
+	}{
+		{
+			name: "exactly prefix length",
+			key:  "sk-dfir-",
+			want: "********",
+		},
+		{
+			name: "prefix plus 1",
+			key:  "sk-dfir-a",
+			want: "*********",
+		},
+		{
+			name: "prefix plus 3",
+			key:  "sk-dfir-abc",
+			want: "***********",
+		},
+		{
+			name: "prefix plus exactly 4",
+			key:  "sk-dfir-abcd",
+			want: "************",
+		},
+		{
+			name: "prefix plus 5 shows last 4",
+			key:  "sk-dfir-abcde",
+			want: "sk-dfir-*bcde",
+		},
+		{
+			name: "very long key",
+			key:  "sk-dfir-" + strings.Repeat("x", 100),
+			want: "sk-dfir-" + strings.Repeat("*", 96) + "xxxx",
+		},
+		{
+			name: "single char",
+			key:  "x",
+			want: "*",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := MaskAPIKey(tc.key)
+			if got != tc.want {
+				t.Errorf("MaskAPIKey(%q) = %q, want %q", tc.key, got, tc.want)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestValidateAPIKeyFormat additional edge cases
+// ---------------------------------------------------------------------------
+
+func TestValidateAPIKeyFormat_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name    string
+		key     string
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name:    "just the prefix",
+			key:     "sk-dfir-",
+			wantErr: true,
+			errMsg:  "too short",
+		},
+		{
+			name:    "prefix plus few chars",
+			key:     "sk-dfir-abcdef",
+			wantErr: true,
+			errMsg:  "too short",
+		},
+		{
+			name:    "exactly minimum length",
+			key:     "sk-dfir-abcdefghijkl",
+			wantErr: false,
+		},
+		{
+			name:    "exactly max boundary",
+			key:     "sk-dfir-" + strings.Repeat("a", 120),
+			wantErr: false,
+		},
+		{
+			name:    "one over max",
+			key:     "sk-dfir-" + strings.Repeat("a", 121),
+			wantErr: true,
+			errMsg:  "too long",
+		},
+		{
+			name:    "lowercase prefix variant is invalid",
+			key:     "SK-DFIR-abcdefghijklmnop",
+			wantErr: true,
+			errMsg:  "must start with",
+		},
+		{
+			name:    "no prefix at all",
+			key:     strings.Repeat("a", 30),
+			wantErr: true,
+			errMsg:  "must start with",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateAPIKeyFormat(tc.key)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if tc.errMsg != "" && !strings.Contains(err.Error(), tc.errMsg) {
+					t.Errorf("error %q does not contain %q", err.Error(), tc.errMsg)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestConfigDirPermissions (0700 after EnsureDir)
+// ---------------------------------------------------------------------------
+
+func TestConfigDirPermissions(t *testing.T) {
+	tmpDir := t.TempDir()
+	configDir := filepath.Join(tmpDir, "deep", "nested", "dir")
+	t.Setenv("DFIR_LAB_CONFIG_DIR", configDir)
+
+	if err := EnsureDir(); err != nil {
+		t.Fatalf("EnsureDir failed: %v", err)
+	}
+
+	info, err := os.Stat(configDir)
+	if err != nil {
+		t.Fatalf("Stat failed: %v", err)
+	}
+	if perm := info.Mode().Perm(); perm != 0700 {
+		t.Errorf("directory permissions = %o, want 0700", perm)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestMultipleProfilesCreateSwitchList
+// ---------------------------------------------------------------------------
+
+func TestMultipleProfilesCreateSwitchList(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("DFIR_LAB_CONFIG_DIR", tmpDir)
+
+	// Create three profiles.
+	for _, name := range []string{"default", "staging", "production"} {
+		p := DefaultProfile()
+		p.APIKey = "sk-dfir-" + name + "key12345"
+		if err := Save(name, p); err != nil {
+			t.Fatalf("Save %q failed: %v", name, err)
+		}
+	}
+
+	// List profiles -- should have 3.
+	profiles, active, err := ListProfiles()
+	if err != nil {
+		t.Fatalf("ListProfiles failed: %v", err)
+	}
+	if len(profiles) != 3 {
+		t.Errorf("expected 3 profiles, got %d", len(profiles))
+	}
+	if active != "default" {
+		t.Errorf("expected active=default, got %q", active)
+	}
+
+	// Switch to production.
+	if err := SetActiveProfile("production"); err != nil {
+		t.Fatalf("SetActiveProfile failed: %v", err)
+	}
+
+	// Verify active profile changed.
+	_, active, err = ListProfiles()
+	if err != nil {
+		t.Fatalf("ListProfiles failed: %v", err)
+	}
+	if active != "production" {
+		t.Errorf("expected active=production, got %q", active)
+	}
+
+	// Load with empty string should return the production profile.
+	loaded, err := Load("")
+	if err != nil {
+		t.Fatalf("Load('') failed: %v", err)
+	}
+	if loaded.APIKey != "sk-dfir-productionkey12345" {
+		t.Errorf("expected production key, got %q", loaded.APIKey)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestLoadNonExistentProfileReturnsError
+// ---------------------------------------------------------------------------
+
+func TestLoadNonExistentProfileReturnsError(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("DFIR_LAB_CONFIG_DIR", tmpDir)
+
+	// Create a config with default profile only.
+	p := DefaultProfile()
+	p.APIKey = "sk-dfir-onlydefault12345"
+	if err := Save("default", p); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	// Load a profile that does not exist.
+	_, err := Load("nonexistent-profile")
+	if err == nil {
+		t.Fatal("expected error for nonexistent profile, got nil")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("error %q does not contain 'not found'", err.Error())
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestApplyDefaults fills zero values correctly
+// ---------------------------------------------------------------------------
+
+func TestApplyDefaults_ZeroValues(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("DFIR_LAB_CONFIG_DIR", tmpDir)
+
+	// Save a profile with ALL zero values except APIKey.
+	sparse := &Profile{
+		APIKey: "sk-dfir-allzeros123456789",
+	}
+	if err := Save("zero", sparse); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	loaded, err := Load("zero")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	// Check each default is applied.
+	if loaded.APIURL != "https://dfir-lab.ch/api/v1" {
+		t.Errorf("APIURL = %q, want default", loaded.APIURL)
+	}
+	if loaded.OutputFormat != "table" {
+		t.Errorf("OutputFormat = %q, want 'table'", loaded.OutputFormat)
+	}
+	if loaded.Timeout != 60*time.Second {
+		t.Errorf("Timeout = %v, want 60s", loaded.Timeout)
+	}
+	if loaded.Concurrency != 5 {
+		t.Errorf("Concurrency = %d, want 5", loaded.Concurrency)
+	}
+	// NoColor should remain false (zero value is the same as default).
+	if loaded.NoColor {
+		t.Error("NoColor should be false")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestConfigFileAtomicWrite (temp file renamed)
+// ---------------------------------------------------------------------------
+
+func TestConfigFileAtomicWrite(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("DFIR_LAB_CONFIG_DIR", tmpDir)
+
+	p := DefaultProfile()
+	p.APIKey = "sk-dfir-atomicwrite12345"
+	if err := Save("default", p); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	// After save, the temp file should NOT exist.
+	tmpPath := filepath.Join(tmpDir, "config.yaml.tmp.yaml")
+	if _, err := os.Stat(tmpPath); err == nil {
+		t.Error("temp file should not exist after successful write")
+	}
+
+	// The actual config file should exist.
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	info, err := os.Stat(configPath)
+	if err != nil {
+		t.Fatalf("config file does not exist: %v", err)
+	}
+	if info.Size() == 0 {
+		t.Error("config file should not be empty")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestDFIRLabConfigDirEnvOverride
+// ---------------------------------------------------------------------------
+
+func TestDFIRLabConfigDirEnvOverride(t *testing.T) {
+	customDir := t.TempDir()
+	t.Setenv("DFIR_LAB_CONFIG_DIR", customDir)
+
+	got := Dir()
+	if got != customDir {
+		t.Errorf("Dir() = %q, want %q", got, customDir)
+	}
+
+	// Save and load in the custom dir.
+	p := DefaultProfile()
+	p.APIKey = "sk-dfir-envoverride12345"
+	if err := Save("default", p); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	loaded, err := Load("default")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if loaded.APIKey != p.APIKey {
+		t.Errorf("APIKey = %q, want %q", loaded.APIKey, p.APIKey)
+	}
+
+	// Verify the file is in the right directory.
+	expectedPath := filepath.Join(customDir, "config.yaml")
+	if _, err := os.Stat(expectedPath); err != nil {
+		t.Errorf("config file not in expected location %q: %v", expectedPath, err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestSaveOverwritesExistingProfile
+// ---------------------------------------------------------------------------
+
+func TestSaveOverwritesExistingProfile(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("DFIR_LAB_CONFIG_DIR", tmpDir)
+
+	p1 := DefaultProfile()
+	p1.APIKey = "sk-dfir-originalkey12345"
+	if err := Save("default", p1); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	p2 := DefaultProfile()
+	p2.APIKey = "sk-dfir-updatedkey123456"
+	p2.OutputFormat = "json"
+	if err := Save("default", p2); err != nil {
+		t.Fatalf("Save overwrite failed: %v", err)
+	}
+
+	loaded, err := Load("default")
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if loaded.APIKey != p2.APIKey {
+		t.Errorf("APIKey = %q, want %q", loaded.APIKey, p2.APIKey)
+	}
+	if loaded.OutputFormat != "json" {
+		t.Errorf("OutputFormat = %q, want 'json'", loaded.OutputFormat)
+	}
+}
