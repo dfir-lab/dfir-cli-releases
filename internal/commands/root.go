@@ -125,6 +125,9 @@ func init() {
 	rootCmd.AddCommand(NewExposureCmd())
 	rootCmd.AddCommand(NewCreditsCmd())
 
+	// Phase 3 commands — AI
+	rootCmd.AddCommand(NewAICmd())
+
 	// Phase 6 commands
 	rootCmd.AddCommand(NewUpdateCmd())
 
@@ -294,6 +297,9 @@ COMMANDS:
   exposure      Search for leaked credentials across breach datasets
   enrichment    Enrich IOCs — domains, IPs, hashes, and emails
 
+AI ASSISTANT:
+  ai            AI-powered DFIR analysis and chat (Starter+)
+
 ACCOUNT:
   credits       View and manage API credit balance
 
@@ -319,6 +325,7 @@ GETTING STARTED:
   $ dfir-cli enrichment lookup --ip 1.2.3.4      Enrich an IP address
   $ dfir-cli phishing analyze --url example.com   Analyse a suspicious URL
   $ dfir-cli exposure scan --domain example.com   Scan for exposures
+  $ dfir-cli ai "What artifacts show persistence?" Ask the AI assistant
 
 LEARN MORE:
   https://platform.dfir-lab.ch/docs

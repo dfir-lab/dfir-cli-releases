@@ -20,6 +20,7 @@ var validConfigKeys = []string{
 	"timeout",
 	"concurrency",
 	"no-color",
+	"ai-model",
 }
 
 // validOutputFormats lists accepted values for the output-format key.
@@ -271,6 +272,11 @@ func newConfigListCmd() *cobra.Command {
 			fmt.Printf("  timeout:        %s\n", p.Timeout)
 			fmt.Printf("  concurrency:    %d\n", p.Concurrency)
 			fmt.Printf("  no-color:       %v\n", p.NoColor)
+			aiModel := p.AIModel
+			if aiModel == "" {
+				aiModel = "sonnet"
+			}
+			fmt.Printf("  ai-model:       %s\n", aiModel)
 			fmt.Println()
 
 			return nil
@@ -311,6 +317,12 @@ func getConfigValue(p *config.Profile, key string) string {
 		return fmt.Sprintf("%d", p.Concurrency)
 	case "no-color":
 		return fmt.Sprintf("%v", p.NoColor)
+	case "ai-model":
+		val := p.AIModel
+		if val == "" {
+			val = "sonnet"
+		}
+		return val
 	default:
 		return ""
 	}
@@ -364,6 +376,13 @@ func applyConfigValue(p *config.Profile, key, value string) error {
 		default:
 			return fmt.Errorf("invalid no-color value %q: must be true or false", value)
 		}
+
+	case "ai-model":
+		v := strings.ToLower(value)
+		if v != "haiku" && v != "sonnet" {
+			return fmt.Errorf("ai-model must be 'haiku' or 'sonnet', got %q", value)
+		}
+		p.AIModel = v
 	}
 
 	return nil

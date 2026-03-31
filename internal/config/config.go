@@ -43,6 +43,7 @@ type Profile struct {
 	Timeout      time.Duration `yaml:"timeout"        mapstructure:"timeout"`
 	Concurrency  int           `yaml:"concurrency"    mapstructure:"concurrency"`
 	NoColor      bool          `yaml:"no_color"       mapstructure:"no_color"`
+	AIModel      string        `yaml:"ai_model"       mapstructure:"ai_model"`
 }
 
 // DefaultProfile returns a Profile populated with default values.
@@ -418,6 +419,7 @@ func setProfileInViper(v *viper.Viper, name string, p *Profile) {
 	v.Set(prefix+"timeout", p.Timeout.String())
 	v.Set(prefix+"concurrency", p.Concurrency)
 	v.Set(prefix+"no_color", p.NoColor)
+	v.Set(prefix+"ai_model", p.AIModel)
 }
 
 // applyDefaults fills in default values for any zero-valued fields that have

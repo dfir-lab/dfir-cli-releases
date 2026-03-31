@@ -37,6 +37,7 @@ type apiResponse struct {
 // Client is the HTTP client for the DFIR Lab API.
 type Client struct {
 	httpClient     *http.Client
+	streamClient   *http.Client // no timeout for SSE streams
 	baseURL        string
 	apiKey         string
 	userAgent      string
@@ -53,6 +54,7 @@ func New(apiKey, baseURL, userAgent string, timeout time.Duration, verbose bool)
 	}
 	return &Client{
 		httpClient:     &http.Client{Timeout: timeout},
+		streamClient:   &http.Client{}, // no timeout for SSE streaming
 		baseURL:        baseURL,
 		apiKey:         apiKey,
 		userAgent:      userAgent,
@@ -260,6 +262,58 @@ func (c *Client) DoRaw(ctx context.Context, method, path string, body interface{
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)
+	}
+
+	return resp, nil
+}
+
+// DoStream executes an HTTP request intended for server-sent events (SSE).
+// It uses a dedicated HTTP client with no timeout, since streams can run
+// indefinitely. On success the raw *http.Response is returned and the caller
+// is responsible for reading and closing the body. On non-2xx responses the
+// body is consumed and a typed error is returned.
+func (c *Client) DoStream(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {
+	url := strings.TrimRight(c.baseURL, "/") + "/" + strings.TrimLeft(path, "/")
+
+	var reqBody io.Reader
+	if body != nil {
+		data, err := json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("marshal request body: %w", err)
+		}
+		reqBody = bytes.NewReader(data)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	// Set headers.
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	if c.userAgent != "" {
+		req.Header.Set("User-Agent", c.userAgent)
+	}
+
+	if c.verbose {
+		redacted := redactKey(c.apiKey)
+		fmt.Fprintf(os.Stderr, "[verbose] %s %s (auth: %s) [stream]\n", method, path, redacted)
+	}
+
+	resp, err := c.streamClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("execute request: %w", err)
+	}
+
+	// On non-success status, consume the body and return a typed error.
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, ParseError(resp) // consumes and closes body
 	}
 
 	return resp, nil
