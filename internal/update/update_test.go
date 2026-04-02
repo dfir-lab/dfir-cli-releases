@@ -22,8 +22,8 @@ func TestIsNewer(t *testing.T) {
 		{"2.0.0", "1.9.9", true},
 		{"1.0.0", "1.0.0", false},
 		{"0.9.0", "1.0.0", false},
-		{"1.0.0-rc1", "1.0.0", false},   // pre-release is older than stable
-		{"1.0.0", "1.0.0-rc1", true},    // stable release is newer than pre-release
+		{"1.0.0-rc1", "1.0.0", false},    // pre-release is older than stable
+		{"1.0.0", "1.0.0-rc1", true},     // stable release is newer than pre-release
 		{"1.0.0-rc2", "1.0.0-rc1", true}, // later pre-release is newer
 	}
 
@@ -128,5 +128,28 @@ func TestCheckForUpdate_NewVersion(t *testing.T) {
 	}
 	if release.HTMLURL == "" {
 		t.Error("expected non-empty HTMLURL")
+	}
+}
+
+func TestRunBackgroundCheck_SkipsWhenStdErrNotTTY(t *testing.T) {
+	t.Setenv("DFIR_LAB_CONFIG_DIR", t.TempDir())
+	t.Setenv("CI", "")
+	t.Setenv("DFIR_LAB_NO_UPDATE_NOTIFIER", "")
+
+	origTTY := isUpdateNoticeTTY
+	isUpdateNoticeTTY = func() bool { return false }
+	t.Cleanup(func() {
+		isUpdateNoticeTTY = origTTY
+	})
+
+	ch := RunBackgroundCheck("1.0.0")
+
+	select {
+	case _, ok := <-ch:
+		if ok {
+			t.Fatal("expected closed channel when notifier is suppressed in non-TTY mode")
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("RunBackgroundCheck did not short-circuit in non-TTY mode")
 	}
 }

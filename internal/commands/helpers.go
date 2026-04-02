@@ -9,9 +9,15 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 
 	"github.com/dfir-lab/dfir-cli/internal/client"
 	"github.com/dfir-lab/dfir-cli/internal/version"
+)
+
+var (
+	interruptMessageWriter = io.Writer(os.Stderr)
+	forceExitFn            = func(code int) { os.Exit(code) }
 )
 
 // newAPIClient creates an authenticated API client using the resolved
@@ -26,23 +32,57 @@ func newAPIClient() (*client.Client, error) {
 }
 
 // signalContext returns a context that is cancelled when the user presses
-// Ctrl+C (SIGINT) or receives SIGTERM. The cancel function should be deferred.
+// Ctrl+C (SIGINT). First Ctrl+C requests graceful cancellation; a second
+// Ctrl+C force-quits immediately.
 func signalContext() (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	sigCh := make(chan os.Signal, 1)
+	sigCh := make(chan os.Signal, 2)
 	signal.Notify(sigCh, os.Interrupt)
 
-	go func() {
-		select {
-		case <-sigCh:
+	ctx, cancel := signalContextFromChannel(sigCh)
+	var once sync.Once
+
+	return ctx, func() {
+		once.Do(func() {
+			signal.Stop(sigCh)
 			cancel()
-		case <-ctx.Done():
+		})
+	}
+}
+
+// signalContextFromChannel is a test seam that allows injecting a synthetic
+// signal source.
+func signalContextFromChannel(sigCh <-chan os.Signal) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+	stopCh := make(chan struct{})
+	var once sync.Once
+
+	go func() {
+		interruptCount := 0
+		for {
+			select {
+			case <-stopCh:
+				return
+			case <-sigCh:
+				interruptCount++
+				if interruptCount == 1 {
+					cancel()
+					fmt.Fprintln(interruptMessageWriter, "Finishing current operation... Press Ctrl+C again to force quit.")
+					continue
+				}
+
+				fmt.Fprintln(interruptMessageWriter, "Force quitting.")
+				forceExitFn(130)
+				return
+			}
 		}
-		signal.Stop(sigCh)
 	}()
 
-	return ctx, cancel
+	return ctx, func() {
+		once.Do(func() {
+			close(stopCh)
+			cancel()
+		})
+	}
 }
 
 // exitCodeForVerdict returns the appropriate exit code based on a verdict string.

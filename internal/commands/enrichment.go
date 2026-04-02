@@ -187,6 +187,13 @@ func runEnrichmentLookup(cmd *cobra.Command, f enrichmentLookupFlags) error {
 		return cmd.Help()
 	}
 
+	// Validate concurrency before creating the API client so invalid flag values
+	// are reported even when authentication is not configured.
+	concurrency := f.concurrency
+	if concurrency < 1 || concurrency > 20 {
+		return fmt.Errorf("--concurrency must be between 1 and 20, got %d", concurrency)
+	}
+
 	// Create API client.
 	apiClient, err := newAPIClient()
 	if err != nil {
@@ -201,12 +208,6 @@ func runEnrichmentLookup(cmd *cobra.Command, f enrichmentLookupFlags) error {
 	format, err := output.ParseFormat(GetOutputFormat())
 	if err != nil {
 		return err
-	}
-
-	// Validate concurrency.
-	concurrency := f.concurrency
-	if concurrency < 1 || concurrency > 20 {
-		return fmt.Errorf("--concurrency must be between 1 and 20, got %d", concurrency)
 	}
 
 	// Chunk indicators into batches of batchAPILimit.

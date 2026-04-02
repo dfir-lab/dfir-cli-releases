@@ -126,3 +126,18 @@ func (c *Client) Health(ctx context.Context) (*HealthResponse, *Response, error)
 	}
 	return &result, resp, nil
 }
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
+
+// AuthValidate validates the current API key and returns account metadata.
+// GET /auth/validate
+func (c *Client) AuthValidate(ctx context.Context) (*AuthValidateResponse, *Response, error) {
+	var result AuthValidateResponse
+	resp, err := c.Do(ctx, http.MethodGet, "/auth/validate", nil, &result)
+	if err != nil {
+		return nil, resp, err
+	}
+	return &result, resp, nil
+}

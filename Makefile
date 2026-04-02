@@ -8,7 +8,7 @@ DATE = $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
 LDFLAGS = -s -w -X github.com/dfir-lab/dfir-cli/internal/version.Version=$(VERSION) -X github.com/dfir-lab/dfir-cli/internal/version.Commit=$(COMMIT) -X github.com/dfir-lab/dfir-cli/internal/version.Date=$(DATE)
 GO = go
 
-.PHONY: all build install clean test test-cover lint fmt vet tidy check run snapshot release-check security completions man help
+.PHONY: all build install clean test test-cover lint fmt vet tidy check run snapshot release-check security completions man docs help
 
 all: build
 
@@ -77,7 +77,11 @@ completions: build ## Generate shell completion scripts to ./completions/
 
 man: ## Generate man pages to ./man/
 	@mkdir -p man
-	$(GO) run ./cmd/gendocs man
+	$(GO) run ./cmd/gendocs man man
+
+docs: ## Generate markdown command reference to ./docs/reference/
+	@mkdir -p docs/reference
+	$(GO) run ./cmd/gendocs md docs/reference
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'

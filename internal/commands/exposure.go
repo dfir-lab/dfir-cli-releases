@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"strings"
 	"sync"
 	"time"
@@ -111,9 +110,9 @@ func runExposureScan(cmd *cobra.Command, domain, targetType, batchFile string, c
 
 	c := client.New(apiKey, GetAPIURL(), version.UserAgent(), timeout, IsVerbose())
 
-	// Context with signal handling for Ctrl+C.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
+	// Context with shared Ctrl+C handling.
+	ctx, cancel := signalContext()
+	defer cancel()
 
 	// Batch mode: iterate through all targets.
 	isBatch := len(targets) > 1

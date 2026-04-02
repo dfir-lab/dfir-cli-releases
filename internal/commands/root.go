@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -25,7 +26,7 @@ directly into your terminal. Analyze phishing campaigns, scan for credential
 exposures, and enrich indicators of compromise (IOCs) — all from the command line.
 
 Capabilities include:
-  - Phishing analysis: submit and inspect phishing URLs, screenshots, and verdicts
+  - Phishing analysis: analyze emails and investigate URLs via phishing toolkit commands
   - Exposure scanning: search for leaked credentials across breach datasets
   - IOC enrichment: look up domains, IPs, hashes, and emails against curated threat feeds
 
@@ -100,6 +101,9 @@ func init() {
 	pflags.BoolP("quiet", "q", false, "Minimal output")
 	pflags.Duration("timeout", 60*time.Second, "HTTP request timeout")
 	pflags.StringP("profile", "p", "default", "Named config profile")
+	_ = rootCmd.RegisterFlagCompletionFunc("profile", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return profileCompletionCandidates(), cobra.ShellCompDirectiveNoFileComp
+	})
 
 	// Bind flags to environment variables via Viper
 	_ = viper.BindPFlag("api_key", pflags.Lookup("api-key"))
@@ -124,6 +128,7 @@ func init() {
 	rootCmd.AddCommand(NewPhishingCmd())
 	rootCmd.AddCommand(NewExposureCmd())
 	rootCmd.AddCommand(NewCreditsCmd())
+	rootCmd.AddCommand(NewUsageCmd())
 
 	// Phase 3 commands — AI
 	rootCmd.AddCommand(NewAICmd())
@@ -282,6 +287,27 @@ func IsNoColor() bool {
 	return false
 }
 
+// profileCompletionCandidates returns known profile names for shell completion.
+// It always includes "default" and, when config can be read, all configured profiles.
+func profileCompletionCandidates() []string {
+	candidates := map[string]struct{}{
+		"default": {},
+	}
+	if profiles, _, err := config.ListProfiles(); err == nil {
+		for name := range profiles {
+			if name != "" {
+				candidates[name] = struct{}{}
+			}
+		}
+	}
+	out := make([]string, 0, len(candidates))
+	for name := range candidates {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // ---------------------------------------------------------------------------
 // Custom help / usage template
 // ---------------------------------------------------------------------------
@@ -293,7 +319,7 @@ var usageTemplate = `Usage:{{if .Runnable}}
 DFIR Lab CLI — Threat intelligence from the command line.
 
 COMMANDS:
-  phishing      Analyse phishing URLs, screenshots, and verdicts
+  phishing      Analyse phishing emails and URLs
   exposure      Search for leaked credentials across breach datasets
   enrichment    Enrich IOCs — domains, IPs, hashes, and emails
 
@@ -301,7 +327,8 @@ AI ASSISTANT:
   ai            AI-powered DFIR analysis and chat (Starter+)
 
 ACCOUNT:
-  credits       View and manage API credit balance
+  credits       View cached API credit balance from the last API call
+  usage         Display API usage statistics
 
 CONFIGURATION:
   config        Manage CLI configuration and profiles
@@ -323,8 +350,9 @@ GLOBAL FLAGS:
 GETTING STARTED:
   $ dfir-cli config init                         Set up your API key
   $ dfir-cli enrichment lookup --ip 1.2.3.4      Enrich an IP address
-  $ dfir-cli phishing analyze --url example.com   Analyse a suspicious URL
+  $ dfir-cli phishing analyze --file email.eml    Analyse a suspicious email
   $ dfir-cli exposure scan --domain example.com   Scan for exposures
+  $ dfir-cli usage --period current               Review usage this month
   $ dfir-cli ai "What artifacts show persistence?" Ask the AI assistant
 
 LEARN MORE:

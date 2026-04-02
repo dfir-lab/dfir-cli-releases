@@ -18,6 +18,14 @@ const (
 	stateFilePerm = os.FileMode(0600)
 )
 
+var isUpdateNoticeTTY = func() bool {
+	fi, err := os.Stderr.Stat()
+	if err != nil {
+		return false
+	}
+	return (fi.Mode() & os.ModeCharDevice) != 0
+}
+
 // CheckState persists the last update check result.
 type CheckState struct {
 	LastCheckedAt  time.Time `json:"last_checked_at"`
@@ -48,6 +56,7 @@ func ShouldCheck() bool {
 //   - The cooldown has not elapsed
 //   - Running in a CI environment (CI env var is set)
 //   - DFIR_LAB_NO_UPDATE_NOTIFIER is set
+//   - stderr is not a TTY
 func RunBackgroundCheck(currentVersion string) <-chan *ReleaseInfo {
 	ch := make(chan *ReleaseInfo, 1)
 
@@ -61,6 +70,10 @@ func RunBackgroundCheck(currentVersion string) <-chan *ReleaseInfo {
 		return ch
 	}
 	if os.Getenv("DFIR_LAB_NO_UPDATE_NOTIFIER") != "" {
+		close(ch)
+		return ch
+	}
+	if !isUpdateNoticeTTY() {
 		close(ch)
 		return ch
 	}

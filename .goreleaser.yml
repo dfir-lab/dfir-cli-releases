@@ -4,6 +4,8 @@ project_name: dfir-cli
 
 before:
   hooks:
+    - go run ./cmd/gendocs man man
+    - go run ./cmd/gendocs md docs/reference
     - go mod tidy
     - git diff --exit-code go.sum
 
@@ -37,6 +39,8 @@ archives:
       - README.md
       - LICENSE
       - completions/*
+      - man/*
+      - docs/reference/*
 
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
@@ -68,6 +72,10 @@ nfpms:
         dst: /usr/share/fish/vendor_completions.d/dfir-cli.fish
         file_info:
           mode: 0644
+      - src: ./man/dfir-cli.1
+        dst: /usr/share/man/man1/dfir-cli.1
+        file_info:
+          mode: 0644
 
 brews:
   - repository:
@@ -84,6 +92,7 @@ brews:
       bash_completion.install "completions/dfir-cli.bash" => "dfir-cli"
       zsh_completion.install "completions/_dfir-cli"
       fish_completion.install "completions/dfir-cli.fish"
+      man1.install Dir["man/*.1"]
     caveats: |
       To get started, make sure Homebrew's bin directory is in your PATH:
 

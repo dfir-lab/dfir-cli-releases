@@ -2,12 +2,16 @@ package commands
 
 import (
 	"bufio"
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/dfir-lab/dfir-cli/internal/client"
 	"github.com/dfir-lab/dfir-cli/internal/config"
+	"github.com/dfir-lab/dfir-cli/internal/version"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -108,12 +112,15 @@ func newConfigInitCmd() *cobra.Command {
 				fmt.Fprintln(os.Stderr, "\nYou can find your API key at: https://platform.dfir-lab.ch/settings/api-keys")
 				return fmt.Errorf("invalid API key: %w", err)
 			}
+			if err := validateAPIKeyWithPlatform(apiKey); err != nil {
+				return err
+			}
 
 			// Build default config and save.
 			p := config.DefaultProfile()
 			p.APIKey = apiKey
 
-			if err := config.Save(profile, p); err != nil {
+			if err := saveInitProfile(profile, p); err != nil {
 				return fmt.Errorf("failed to save configuration: %w", err)
 			}
 
@@ -291,6 +298,59 @@ func newConfigListCmd() *cobra.Command {
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
+
+// authValidateAPIKey is a test seam for remote API key validation.
+var authValidateAPIKey = func(ctx context.Context, apiKey, apiURL string, timeout time.Duration, verbose bool) error {
+	c := client.New(apiKey, apiURL, version.UserAgent(), timeout, verbose)
+	_, _, err := c.AuthValidate(ctx)
+	return err
+}
+
+// saveInitProfile persists the profile during config init. On first run we
+// write active_profile metadata; on existing configs we preserve other profiles.
+func saveInitProfile(profile string, p *config.Profile) error {
+	if config.Exists() {
+		return config.Save(profile, p)
+	}
+	return config.WriteInitialConfig(profile, p)
+}
+
+// validateAPIKeyWithPlatform performs best-effort remote API key validation.
+// Authentication/authorization failures block setup; transient network/server
+// issues show a warning and fall back to local format validation.
+func validateAPIKeyWithPlatform(apiKey string) error {
+	timeout := GetTimeout()
+	if timeout <= 0 || timeout > 15*time.Second {
+		timeout = 15 * time.Second
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	err := authValidateAPIKey(ctx, apiKey, GetAPIURL(), timeout, IsVerbose())
+	if err == nil {
+		return nil
+	}
+
+	if isFatalAPIKeyValidationError(err) {
+		return err
+	}
+
+	fmt.Fprintf(os.Stderr, "Warning: could not validate API key with DFIR Platform (%v). Continuing with local validation only.\n", err)
+	return nil
+}
+
+// isFatalAPIKeyValidationError reports whether config init should fail when
+// remote validation returns err.
+func isFatalAPIKeyValidationError(err error) bool {
+	var authErr *client.AuthenticationError
+	if errors.As(err, &authErr) {
+		return true
+	}
+
+	var authorizationErr *client.AuthorizationError
+	return errors.As(err, &authorizationErr)
+}
 
 // isValidKey returns true if key is in the valid config keys list.
 func isValidKey(key string) bool {

@@ -39,7 +39,7 @@
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Run `dfir-cli` with no arguments | Custom help/usage template is displayed. Output contains "DFIR Lab CLI" header, COMMANDS section (phishing, exposure, enrichment), ACCOUNT section (credits), CONFIGURATION section (config), OTHER section (version, completion, update), GETTING STARTED examples, and LEARN MORE link. Exit code 0. |
+| 1 | Run `dfir-cli` with no arguments | Custom help/usage template is displayed. Output contains "DFIR Lab CLI" header, COMMANDS section (phishing, exposure, enrichment), ACCOUNT section (`credits`, `usage`), CONFIGURATION section (config), OTHER section (version, completion, update), GETTING STARTED examples, and LEARN MORE link. Exit code 0. |
 | 2 | Run `dfir-cli --help` | Same help output as step 1. Exit code 0. |
 | 3 | Run `dfir-cli -h` | Same help output as step 1. Exit code 0. |
 
@@ -798,7 +798,7 @@ google.com
 
 ---
 
-### TC-UC4-012: --url flag is not supported
+### TC-UC4-012: Legacy --url flag is hidden and rejected
 
 **Priority:** Medium
 **Category:** Negative
@@ -807,9 +807,10 @@ google.com
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Run `dfir-cli phishing analyze --url https://phishing.example.com` | Error: "--url is not supported for phishing analysis." with tip to use `dfir-cli enrichment lookup --url`. Exit code 1. |
+| 1 | Run `dfir-cli phishing analyze --help` | The `--url` flag is not shown in help output. |
+| 2 | Run `dfir-cli phishing analyze --url https://phishing.example.com` | CLI prints a deprecation warning for `--url` and then returns: "--url is not supported for phishing analysis." with tip to use `dfir-cli enrichment lookup --url`. Exit code 1. |
 
-**Pass criteria:** Clear error with alternative suggestion.
+**Pass criteria:** The public help surface does not advertise URL analysis for this command, while legacy `--url` usage still fails with a clear migration path.
 
 ---
 

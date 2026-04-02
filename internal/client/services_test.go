@@ -409,8 +409,8 @@ func TestPhishingURLExpand_Success(t *testing.T) {
 		}
 
 		data := map[string]interface{}{
-			"original_url":  "https://bit.ly/abc",
-			"expanded_url":  "https://example.com/full-page",
+			"original_url":   "https://bit.ly/abc",
+			"expanded_url":   "https://example.com/full-page",
 			"redirect_chain": []string{"https://bit.ly/abc", "https://example.com/full-page"},
 		}
 
@@ -469,6 +469,67 @@ func TestPhishingSafeBrowsing_Success(t *testing.T) {
 	}
 	if result["results"] == nil {
 		t.Error("expected non-nil results")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// AuthValidate
+// ---------------------------------------------------------------------------
+
+func TestAuthValidate_Success(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/auth/validate" {
+			t.Errorf("expected /auth/validate, got %s", r.URL.Path)
+		}
+
+		data := AuthValidateResponse{
+			Plan:             "starter",
+			Credits:          1234,
+			OrganizationName: "DFIR Lab",
+			OrganizationID:   "org-123",
+			Permissions:      []string{"api:read", "api:write"},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(successEnvelope(data))
+	}))
+	defer ts.Close()
+
+	c := testClient(ts)
+	result, resp, err := c.AuthValidate(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Meta.RequestID != "test-123" {
+		t.Errorf("expected request_id=test-123, got %q", resp.Meta.RequestID)
+	}
+	if result.Plan != "starter" {
+		t.Errorf("expected plan=starter, got %q", result.Plan)
+	}
+	if result.Credits != 1234 {
+		t.Errorf("expected credits=1234, got %d", result.Credits)
+	}
+}
+
+func TestAuthValidate_Error(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write(errorEnvelope("authentication_error", "invalid_key", "bad key", "req-auth-401"))
+	}))
+	defer ts.Close()
+
+	c := testClient(ts)
+	result, _, err := c.AuthValidate(context.Background())
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if result != nil {
+		t.Errorf("expected nil result on error, got %+v", result)
 	}
 }
 

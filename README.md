@@ -155,7 +155,7 @@ dfir-cli
 │   └── lookup            Enrich IOCs across threat intelligence providers
 ├── exposure
 │   └── scan              Scan domains for external exposure
-├── credits               View API credit balance
+├── credits               View cached API credit balance
 ├── usage                 View API usage statistics
 ├── config
 │   ├── init              Interactive first-run setup
@@ -246,13 +246,15 @@ dfir-cli exposure scan --batch domains.txt --concurrency 5
 
 ### Account
 
-Check your remaining API credits and usage:
+Check your cached credit balance (from the most recent API call) and usage:
 
 ```bash
 dfir-cli credits
 dfir-cli usage
 dfir-cli usage --period 2026-02 --service enrichment
 ```
+
+`dfir-cli credits` reads locally cached metadata and does not trigger a new API request.
 
 ### Piping and scripting
 

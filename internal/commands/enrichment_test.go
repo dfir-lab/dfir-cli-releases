@@ -823,3 +823,23 @@ func TestEnrichmentConcurrencyValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestEnrichmentConcurrencyValidation_BeforeAPIKeyResolution(t *testing.T) {
+	cmd := newEnrichmentLookupCmd()
+
+	err := runEnrichmentLookup(cmd, enrichmentLookupFlags{
+		ip:          "1.2.3.4",
+		concurrency: 0,
+	})
+	if err == nil {
+		t.Fatal("expected concurrency validation error, got nil")
+	}
+
+	msg := err.Error()
+	if !strings.Contains(msg, "--concurrency must be between 1 and 20") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(msg, "no API key configured") {
+		t.Fatalf("concurrency should be validated before API key lookup, got: %v", err)
+	}
+}

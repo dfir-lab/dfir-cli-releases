@@ -90,6 +90,36 @@ func TestResolvePhishingInput_FilePrecedesRaw(t *testing.T) {
 	}
 }
 
+func TestNewPhishingAnalyzeCmd_URLFlagIsHiddenAndDeprecated(t *testing.T) {
+	cmd := newPhishingAnalyzeCmd()
+	flag := cmd.Flags().Lookup("url")
+	if flag == nil {
+		t.Fatal("expected legacy --url flag to exist")
+	}
+	if !flag.Hidden {
+		t.Error("expected --url flag to be hidden")
+	}
+	if flag.Deprecated == "" {
+		t.Error("expected --url flag to be deprecated")
+	}
+	if !strings.Contains(flag.Deprecated, "enrichment lookup --url") {
+		t.Errorf("deprecated message should contain migration hint, got: %q", flag.Deprecated)
+	}
+}
+
+func TestRunPhishingAnalyze_LegacyURLFlagError(t *testing.T) {
+	err := runPhishingAnalyze("https://phishing.example.com", "", "", "", false)
+	if err == nil {
+		t.Fatal("expected error for legacy --url flag")
+	}
+	if !strings.Contains(err.Error(), "--url is not supported for phishing analysis") {
+		t.Errorf("error should mention unsupported --url, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "enrichment lookup --url") {
+		t.Errorf("error should include alternative command, got: %v", err)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // readPhishingEmailFile
 // ---------------------------------------------------------------------------

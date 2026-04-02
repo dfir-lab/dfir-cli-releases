@@ -8,34 +8,49 @@ import (
 	"github.com/spf13/cobra/doc"
 )
 
+func usage() {
+	fmt.Fprintln(os.Stderr, "Usage: gendocs <man|md> <output-dir>")
+	fmt.Fprintln(os.Stderr, "  gendocs man ./man")
+	fmt.Fprintln(os.Stderr, "  gendocs md ./docs/reference")
+}
+
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "Usage: gendocs <output-dir>")
+	if len(os.Args) < 3 {
+		usage()
 		os.Exit(1)
 	}
 
-	outDir := os.Args[1]
+	mode := os.Args[1]
+	outDir := os.Args[2]
 	if err := os.MkdirAll(outDir, 0755); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
 		os.Exit(1)
 	}
 
-	// We need access to the root command. Export it via a function.
-	// For now, use doc.GenManTree with the root command.
 	cmd := commands.RootCmd()
 	cmd.DisableAutoGenTag = true
 
-	header := &doc.GenManHeader{
-		Title:   "DFIR-CLI",
-		Section: "1",
-		Source:  "DFIR Lab",
-		Manual:  "DFIR CLI Manual",
-	}
-
-	if err := doc.GenManTree(cmd, header, outDir); err != nil {
-		fmt.Fprintf(os.Stderr, "Error generating man pages: %v\n", err)
+	switch mode {
+	case "man":
+		header := &doc.GenManHeader{
+			Title:   "DFIR-CLI",
+			Section: "1",
+			Source:  "DFIR Lab",
+			Manual:  "DFIR CLI Manual",
+		}
+		if err := doc.GenManTree(cmd, header, outDir); err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating man pages: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Man pages generated in %s\n", outDir)
+	case "md":
+		if err := doc.GenMarkdownTree(cmd, outDir); err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating markdown docs: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Markdown command reference generated in %s\n", outDir)
+	default:
+		usage()
 		os.Exit(1)
 	}
-
-	fmt.Printf("Man pages generated in %s\n", outDir)
 }

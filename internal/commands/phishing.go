@@ -44,7 +44,7 @@ func NewPhishingCmd() *cobra.Command {
 
 func newPhishingAnalyzeCmd() *cobra.Command {
 	var (
-		flagURL       string
+		flagLegacyURL string
 		flagFile      string
 		flagRaw       string
 		flagInputType string
@@ -63,12 +63,14 @@ Input methods:
 
 Use --ai for AI-enhanced analysis (costs 10 credits instead of 1).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPhishingAnalyze(flagURL, flagFile, flagRaw, flagInputType, flagAI)
+			return runPhishingAnalyze(flagLegacyURL, flagFile, flagRaw, flagInputType, flagAI)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.StringVar(&flagURL, "url", "", "Analyze a URL (not yet supported — use enrichment lookup)")
+	flags.StringVar(&flagLegacyURL, "url", "", "DEPRECATED: phishing analyze only supports email content")
+	_ = flags.MarkHidden("url")
+	_ = flags.MarkDeprecated("url", "phishing analyze supports email content only; use `dfir-cli enrichment lookup --url <url>`")
 	flags.StringVar(&flagFile, "file", "", "Path to an .eml email file")
 	flags.StringVar(&flagRaw, "raw", "", "Raw email content as a string")
 	flags.StringVar(&flagInputType, "type", "", "Input type: headers, eml, raw (auto-detected if omitted)")
@@ -77,9 +79,9 @@ Use --ai for AI-enhanced analysis (costs 10 credits instead of 1).`,
 	return cmd
 }
 
-func runPhishingAnalyze(urlFlag, fileFlag, rawFlag, inputType string, ai bool) error {
-	// --url is not supported by the analysis API.
-	if urlFlag != "" {
+func runPhishingAnalyze(legacyURLFlag, fileFlag, rawFlag, inputType string, ai bool) error {
+	// Legacy --url flag is intentionally unsupported for this command.
+	if legacyURLFlag != "" {
 		return fmt.Errorf("--url is not supported for phishing analysis.\n" +
 			"The API analyses full emails, not individual URLs.\n" +
 			"Tip: use  dfir-cli enrichment lookup --url <url>  to check a URL")

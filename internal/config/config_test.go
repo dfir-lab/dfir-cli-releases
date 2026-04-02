@@ -593,6 +593,15 @@ func TestWriteInitialConfig(t *testing.T) {
 		t.Fatal("config file does not exist after WriteInitialConfig")
 	}
 
+	// First-run config should include active_profile metadata.
+	raw, err := os.ReadFile(Path())
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+	if !strings.Contains(string(raw), "active_profile: production") {
+		t.Fatalf("config missing active_profile metadata:\n%s", string(raw))
+	}
+
 	// Load the profile back.
 	loaded, err := Load("production")
 	if err != nil {

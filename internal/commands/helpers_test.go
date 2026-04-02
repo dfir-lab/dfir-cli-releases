@@ -1,9 +1,12 @@
 package commands
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 // ---------------------------------------------------------------------------
@@ -193,5 +196,82 @@ func TestReadLines_NoTrailingNewline(t *testing.T) {
 	want := []string{"alpha", "bravo"}
 	if len(lines) != len(want) {
 		t.Fatalf("expected %d lines, got %d: %v", len(want), len(lines), lines)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestSignalContext
+// ---------------------------------------------------------------------------
+
+func TestSignalContextFromChannel_FirstInterruptCancels(t *testing.T) {
+	var out bytes.Buffer
+	exitCalls := make(chan int, 1)
+
+	origWriter := interruptMessageWriter
+	origForceExit := forceExitFn
+	interruptMessageWriter = &out
+	forceExitFn = func(code int) { exitCalls <- code }
+	t.Cleanup(func() {
+		interruptMessageWriter = origWriter
+		forceExitFn = origForceExit
+	})
+
+	sigCh := make(chan os.Signal, 2)
+	ctx, cancel := signalContextFromChannel(sigCh)
+	defer cancel()
+
+	sigCh <- os.Interrupt
+
+	select {
+	case <-ctx.Done():
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("context was not cancelled after first Ctrl+C")
+	}
+
+	select {
+	case code := <-exitCalls:
+		t.Fatalf("force exit unexpectedly called with code %d", code)
+	default:
+	}
+
+	msg := out.String()
+	if !strings.Contains(msg, "Finishing current operation... Press Ctrl+C again to force quit.") {
+		t.Fatalf("missing first Ctrl+C guidance message: %q", msg)
+	}
+}
+
+func TestSignalContextFromChannel_SecondInterruptForcesExit(t *testing.T) {
+	var out bytes.Buffer
+	exitCalls := make(chan int, 1)
+
+	origWriter := interruptMessageWriter
+	origForceExit := forceExitFn
+	interruptMessageWriter = &out
+	forceExitFn = func(code int) { exitCalls <- code }
+	t.Cleanup(func() {
+		interruptMessageWriter = origWriter
+		forceExitFn = origForceExit
+	})
+
+	sigCh := make(chan os.Signal, 2)
+	ctx, cancel := signalContextFromChannel(sigCh)
+	defer cancel()
+
+	sigCh <- os.Interrupt
+	<-ctx.Done()
+	sigCh <- os.Interrupt
+
+	select {
+	case code := <-exitCalls:
+		if code != 130 {
+			t.Fatalf("force exit code = %d, want 130", code)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("second Ctrl+C did not trigger force exit")
+	}
+
+	msg := out.String()
+	if !strings.Contains(msg, "Force quitting.") {
+		t.Fatalf("missing force quit message: %q", msg)
 	}
 }
