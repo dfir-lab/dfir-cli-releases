@@ -327,7 +327,7 @@ func validateAPIKeyWithPlatform(apiKey string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	err := authValidateAPIKey(ctx, apiKey, GetAPIURL(), timeout, IsVerbose())
+	err := authValidateAPIKey(ctx, apiKey, GetAuthValidateAPIURL(), timeout, IsVerbose())
 	if err == nil {
 		return nil
 	}

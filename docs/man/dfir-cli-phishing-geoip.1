@@ -1,0 +1,81 @@
+.nh
+.TH "DFIR-CLI" "1" "Apr 2026" "DFIR Lab" "DFIR CLI Manual"
+
+.SH NAME
+dfir-cli-phishing-geoip - Look up geographic location of IPs
+
+
+.SH SYNOPSIS
+\fBdfir-cli phishing geoip [flags]\fP
+
+
+.SH DESCRIPTION
+Look up the geographic location of one or more IP addresses using GeoIP data.
+
+.PP
+Input methods:
+  --ip 1.2.3.4                                   Single IP lookup
+  --batch ips.txt                                 File with one IP per line
+  echo "1.2.3.4" | dfir-cli phishing geoip       Pipe via stdin
+
+
+.SH OPTIONS
+\fB--batch\fP=""
+	File with one IP per line (use - for stdin)
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for geoip
+
+.PP
+\fB--ip\fP=""
+	IP address to look up
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--api-key\fP=""
+	Override API key for this invocation
+
+.PP
+\fB--api-url\fP=""
+	Override API base URL (default from config)
+
+.PP
+\fB-j\fP, \fB--json\fP[=false]
+	Shorthand for --output json
+
+.PP
+\fB--no-color\fP[=false]
+	Disable colored output
+
+.PP
+\fB-o\fP, \fB--output\fP="table"
+	Output format: table, json, jsonl, csv
+
+.PP
+\fB-p\fP, \fB--profile\fP="default"
+	Named config profile
+
+.PP
+\fB-q\fP, \fB--quiet\fP[=false]
+	Minimal output
+
+.PP
+\fB--timeout\fP=1m0s
+	HTTP request timeout
+
+.PP
+\fB-v\fP, \fB--verbose\fP[=false]
+	Show debug information (HTTP requests/responses)
+
+
+.SH EXAMPLE
+.EX
+  dfir-cli phishing geoip --ip 8.8.8.8
+  dfir-cli phishing geoip --batch ips.txt
+  echo "1.2.3.4" | dfir-cli phishing geoip
+.EE
+
+
+.SH SEE ALSO
+\fBdfir-cli-phishing(1)\fP

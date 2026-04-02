@@ -67,7 +67,7 @@ func runPhishingURLExpand(urlFlag string) error {
 
 	// Persist credit state for the credits command.
 	if resp != nil {
-		_ = SaveCreditState(&resp.Meta)
+		_ = SaveAPIState(&resp.Meta, "phishing", "url-expand")
 	}
 
 	switch format {

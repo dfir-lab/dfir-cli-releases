@@ -5,9 +5,43 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
+
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+func waitForBufferSubstring(t *testing.T, buf *lockedBuffer, want string) string {
+	t.Helper()
+
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for {
+		got := buf.String()
+		if strings.Contains(got, want) {
+			return got
+		}
+		if time.Now().After(deadline) {
+			return got
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
 
 // ---------------------------------------------------------------------------
 // TestExitCodeForVerdict
@@ -204,7 +238,7 @@ func TestReadLines_NoTrailingNewline(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSignalContextFromChannel_FirstInterruptCancels(t *testing.T) {
-	var out bytes.Buffer
+	var out lockedBuffer
 	exitCalls := make(chan int, 1)
 
 	origWriter := interruptMessageWriter
@@ -234,14 +268,14 @@ func TestSignalContextFromChannel_FirstInterruptCancels(t *testing.T) {
 	default:
 	}
 
-	msg := out.String()
+	msg := waitForBufferSubstring(t, &out, "Finishing current operation... Press Ctrl+C again to force quit.")
 	if !strings.Contains(msg, "Finishing current operation... Press Ctrl+C again to force quit.") {
 		t.Fatalf("missing first Ctrl+C guidance message: %q", msg)
 	}
 }
 
 func TestSignalContextFromChannel_SecondInterruptForcesExit(t *testing.T) {
-	var out bytes.Buffer
+	var out lockedBuffer
 	exitCalls := make(chan int, 1)
 
 	origWriter := interruptMessageWriter
@@ -270,7 +304,7 @@ func TestSignalContextFromChannel_SecondInterruptForcesExit(t *testing.T) {
 		t.Fatal("second Ctrl+C did not trigger force exit")
 	}
 
-	msg := out.String()
+	msg := waitForBufferSubstring(t, &out, "Force quitting.")
 	if !strings.Contains(msg, "Force quitting.") {
 		t.Fatalf("missing force quit message: %q", msg)
 	}

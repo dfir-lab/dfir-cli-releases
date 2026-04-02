@@ -3,9 +3,6 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -14,27 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-// usageEnvelope wraps a UsageResponse in the standard API envelope.
-func usageEnvelope(data *client.UsageResponse) []byte {
-	d, _ := json.Marshal(data)
-	env := map[string]interface{}{
-		"data": json.RawMessage(d),
-		"meta": map[string]interface{}{
-			"request_id":         "req-usage-001",
-			"credits_used":       1,
-			"credits_remaining":  99,
-			"processing_time_ms": 42,
-		},
-	}
-	b, _ := json.Marshal(env)
-	return b
-}
-
-// sampleUsageResponse returns a realistic usage response for tests.
 func sampleUsageResponse() *client.UsageResponse {
 	return &client.UsageResponse{
 		Period:        "March 2026",
@@ -53,76 +29,162 @@ func sampleUsageResponse() *client.UsageResponse {
 	}
 }
 
-// usageMockServer creates a test server that returns the given usage response.
-func usageMockServer(resp *client.UsageResponse) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(usageEnvelope(resp))
-	}))
+func testMeta(requestID string, creditsUsed int) *client.ResponseMeta {
+	return &client.ResponseMeta{
+		RequestID:        requestID,
+		CreditsUsed:      creditsUsed,
+		CreditsRemaining: 100 - creditsUsed,
+	}
 }
 
-// usageTestClient creates a client pointing to the given test server.
-func usageTestClient(ts *httptest.Server) *client.Client {
-	c := client.New("sk-dfir-testapikey1234", ts.URL, "dfir-cli-test/1.0", 5*time.Second, false)
-	return c
-}
+func seedUsageLedger(t *testing.T) {
+	t.Helper()
 
-// ---------------------------------------------------------------------------
-// TestRunUsage_Table
-// ---------------------------------------------------------------------------
-
-func TestRunUsage_Table(t *testing.T) {
-	ts := usageMockServer(sampleUsageResponse())
-	defer ts.Close()
-
-	// Set up a temporary config dir so SaveCreditState works.
 	tmpDir := t.TempDir()
 	t.Setenv("DFIR_LAB_CONFIG_DIR", tmpDir)
 
-	// Build a command that mimics the real one.
+	origTimeNowMonth := timeNowMonth
+	origUsageNow := usageNow
+	timeNowMonth = func() string { return "2026-03" }
+	usageNow = func() time.Time { return time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() {
+		timeNowMonth = origTimeNowMonth
+		usageNow = origUsageNow
+	})
+
+	events := []struct {
+		meta      *client.ResponseMeta
+		service   string
+		operation string
+	}{
+		{testMeta("req-1", 3), "enrichment", "lookup"},
+		{testMeta("req-2", 3), "enrichment", "lookup"},
+		{testMeta("req-3", 1), "phishing", "analyze"},
+		{testMeta("req-4", 10), "exposure", "scan"},
+	}
+
+	for _, event := range events {
+		if err := SaveUsageEvent(event.meta, event.service, event.operation); err != nil {
+			t.Fatalf("SaveUsageEvent(%s/%s) failed: %v", event.service, event.operation, err)
+		}
+	}
+
+	timeNowMonth = func() string { return "2026-02" }
+	if err := SaveUsageEvent(testMeta("req-prev", 10), "phishing", "analyze-ai"); err != nil {
+		t.Fatalf("SaveUsageEvent(previous month) failed: %v", err)
+	}
+	timeNowMonth = func() string { return "2026-03" }
+}
+
+func TestBuildUsageResponse_CurrentPeriod(t *testing.T) {
+	seedUsageLedger(t)
+
+	result, err := buildUsageResponse("current", "")
+	if err != nil {
+		t.Fatalf("buildUsageResponse returned error: %v", err)
+	}
+
+	if result.Period != "March 2026" {
+		t.Fatalf("Period = %q, want %q", result.Period, "March 2026")
+	}
+	if result.TotalRequests != 4 {
+		t.Fatalf("TotalRequests = %d, want 4", result.TotalRequests)
+	}
+	if result.TotalCredits != 17 {
+		t.Fatalf("TotalCredits = %d, want 17", result.TotalCredits)
+	}
+	if result.ByService["enrichment"].Requests != 2 {
+		t.Fatalf("enrichment requests = %d, want 2", result.ByService["enrichment"].Requests)
+	}
+	if len(result.TopOperations) != 3 {
+		t.Fatalf("TopOperations len = %d, want 3", len(result.TopOperations))
+	}
+	if got := result.TopOperations[0]; got.Service != "enrichment" || got.Operation != "lookup" || got.Requests != 2 {
+		t.Fatalf("top operation[0] = %+v, want enrichment/lookup with 2 requests", got)
+	}
+}
+
+func TestBuildUsageResponse_ServiceFilter(t *testing.T) {
+	seedUsageLedger(t)
+
+	result, err := buildUsageResponse("current", "enrichment")
+	if err != nil {
+		t.Fatalf("buildUsageResponse returned error: %v", err)
+	}
+
+	if result.TotalRequests != 2 {
+		t.Fatalf("TotalRequests = %d, want 2", result.TotalRequests)
+	}
+	if result.TotalCredits != 6 {
+		t.Fatalf("TotalCredits = %d, want 6", result.TotalCredits)
+	}
+	if len(result.ByService) != 1 {
+		t.Fatalf("ByService len = %d, want 1", len(result.ByService))
+	}
+	if len(result.TopOperations) != 1 {
+		t.Fatalf("TopOperations len = %d, want 1", len(result.TopOperations))
+	}
+	if got := result.TopOperations[0]; got.Service != "enrichment" || got.Operation != "lookup" {
+		t.Fatalf("TopOperations[0] = %+v, want enrichment/lookup", got)
+	}
+}
+
+func TestBuildUsageResponse_PreviousPeriod(t *testing.T) {
+	seedUsageLedger(t)
+
+	result, err := buildUsageResponse("previous", "")
+	if err != nil {
+		t.Fatalf("buildUsageResponse returned error: %v", err)
+	}
+
+	if result.Period != "February 2026" {
+		t.Fatalf("Period = %q, want %q", result.Period, "February 2026")
+	}
+	if result.TotalRequests != 1 || result.TotalCredits != 10 {
+		t.Fatalf("unexpected totals: %+v", result)
+	}
+}
+
+func TestBuildUsageResponse_NoState(t *testing.T) {
+	t.Setenv("DFIR_LAB_CONFIG_DIR", t.TempDir())
+
+	origUsageNow := usageNow
+	usageNow = func() time.Time { return time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { usageNow = origUsageNow })
+
+	result, err := buildUsageResponse("current", "")
+	if err != nil {
+		t.Fatalf("buildUsageResponse returned error: %v", err)
+	}
+	if result.TotalRequests != 0 || result.TotalCredits != 0 {
+		t.Fatalf("expected empty totals, got %+v", result)
+	}
+}
+
+func TestResolveUsagePeriod_Invalid(t *testing.T) {
+	if _, _, err := resolveUsagePeriod("2026/03"); err == nil {
+		t.Fatal("expected invalid period error, got nil")
+	}
+}
+
+func TestRunUsage_Table(t *testing.T) {
 	var buf bytes.Buffer
 	cmd := &cobra.Command{Use: "usage"}
 	cmd.SetOut(&buf)
 
-	// Override the root flags for the test.
-	origGetAPIKey := GetAPIKey
-	origGetAPIURL := GetAPIURL
-	origGetOutputFormat := GetOutputFormat
-	origIsQuiet := IsQuiet
-	defer func() {
-		// These are package-level functions, so we restore them.
-		_ = origGetAPIKey
-		_ = origGetAPIURL
-		_ = origGetOutputFormat
-		_ = origIsQuiet
-	}()
-
-	// Directly call the client and render.
-	apiClient := usageTestClient(ts)
-	ctx, cancel := signalContext()
-	defer cancel()
-
-	req := &client.UsageRequest{Period: "current"}
-	result, resp, err := apiClient.Usage(ctx, req)
-	if err != nil {
-		t.Fatalf("Usage() returned error: %v", err)
-	}
-
-	if err := renderUsageTable(cmd, result, resp); err != nil {
+	if err := renderUsageTable(cmd, sampleUsageResponse()); err != nil {
 		t.Fatalf("renderUsageTable returned error: %v", err)
 	}
 
 	out := buf.String()
-
-	// Verify key content is present.
 	checks := []string{
-		"API Usage",
+		"Local API Usage",
 		"March 2026",
 		"Total Requests",
 		"1,247",
 		"Total Credits",
 		"6,580",
+		"locally recorded dfir-cli activity",
 	}
 	for _, want := range checks {
 		if !strings.Contains(out, want) {
@@ -131,79 +193,34 @@ func TestRunUsage_Table(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// TestRunUsage_JSON
-// ---------------------------------------------------------------------------
-
 func TestRunUsage_JSON(t *testing.T) {
-	ts := usageMockServer(sampleUsageResponse())
-	defer ts.Close()
-
-	apiClient := usageTestClient(ts)
-	ctx, cancel := signalContext()
-	defer cancel()
-
-	req := &client.UsageRequest{Period: "current"}
-	result, resp, err := apiClient.Usage(ctx, req)
-	if err != nil {
-		t.Fatalf("Usage() returned error: %v", err)
-	}
-
-	data, err := renderUsageJSONRaw(result, resp)
+	data, err := renderUsageJSONRaw(sampleUsageResponse())
 	if err != nil {
 		t.Fatalf("renderUsageJSONRaw returned error: %v", err)
 	}
 
-	// Verify it's valid JSON.
 	var parsed map[string]interface{}
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		t.Fatalf("JSON output is not valid: %v\nGot:\n%s", err, string(data))
 	}
 
-	// Check key fields.
 	if period, ok := parsed["period"].(string); !ok || period != "March 2026" {
 		t.Errorf("expected period 'March 2026', got %v", parsed["period"])
 	}
-
-	totalReqs, ok := parsed["total_requests"].(float64)
-	if !ok || int(totalReqs) != 1247 {
+	if totalReqs, ok := parsed["total_requests"].(float64); !ok || int(totalReqs) != 1247 {
 		t.Errorf("expected total_requests 1247, got %v", parsed["total_requests"])
 	}
-
-	totalCreds, ok := parsed["total_credits"].(float64)
-	if !ok || int(totalCreds) != 6580 {
-		t.Errorf("expected total_credits 6580, got %v", parsed["total_credits"])
-	}
-
-	// Verify meta is present.
-	if _, ok := parsed["meta"]; !ok {
-		t.Error("expected 'meta' field in JSON output")
+	if _, ok := parsed["meta"]; ok {
+		t.Error("did not expect legacy remote meta field in JSON output")
 	}
 }
 
-// ---------------------------------------------------------------------------
-// TestRunUsage_Quiet
-// ---------------------------------------------------------------------------
-
 func TestRunUsage_Quiet(t *testing.T) {
-	ts := usageMockServer(sampleUsageResponse())
-	defer ts.Close()
-
-	apiClient := usageTestClient(ts)
-	ctx, cancel := signalContext()
-	defer cancel()
-
-	req := &client.UsageRequest{Period: "current"}
-	result, _, err := apiClient.Usage(ctx, req)
-	if err != nil {
-		t.Fatalf("Usage() returned error: %v", err)
-	}
-
 	var buf bytes.Buffer
 	cmd := &cobra.Command{Use: "usage"}
 	cmd.SetOut(&buf)
 
-	if err := renderUsageQuiet(cmd, result); err != nil {
+	if err := renderUsageQuiet(cmd, sampleUsageResponse()); err != nil {
 		t.Fatalf("renderUsageQuiet returned error: %v", err)
 	}
 
@@ -213,142 +230,26 @@ func TestRunUsage_Quiet(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// TestRunUsage_PeriodFilter
-// ---------------------------------------------------------------------------
-
-func TestRunUsage_PeriodFilter(t *testing.T) {
-	var receivedPeriod string
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedPeriod = r.URL.Query().Get("period")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(usageEnvelope(sampleUsageResponse()))
-	}))
-	defer ts.Close()
-
-	apiClient := usageTestClient(ts)
-	ctx, cancel := signalContext()
-	defer cancel()
-
-	req := &client.UsageRequest{Period: "2026-01"}
-	_, _, err := apiClient.Usage(ctx, req)
-	if err != nil {
-		t.Fatalf("Usage() returned error: %v", err)
-	}
-
-	if receivedPeriod != "2026-01" {
-		t.Errorf("server received period=%q, want %q", receivedPeriod, "2026-01")
-	}
-}
-
-// ---------------------------------------------------------------------------
-// TestRunUsage_ServiceFilter
-// ---------------------------------------------------------------------------
-
-func TestRunUsage_ServiceFilter(t *testing.T) {
-	var receivedService string
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedService = r.URL.Query().Get("service")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(usageEnvelope(sampleUsageResponse()))
-	}))
-	defer ts.Close()
-
-	apiClient := usageTestClient(ts)
-	ctx, cancel := signalContext()
-	defer cancel()
-
-	req := &client.UsageRequest{Service: "enrichment"}
-	_, _, err := apiClient.Usage(ctx, req)
-	if err != nil {
-		t.Fatalf("Usage() returned error: %v", err)
-	}
-
-	if receivedService != "enrichment" {
-		t.Errorf("server received service=%q, want %q", receivedService, "enrichment")
-	}
-}
-
-// ---------------------------------------------------------------------------
-// TestRunUsage_AuthError
-// ---------------------------------------------------------------------------
-
-func TestRunUsage_AuthError(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		env := map[string]interface{}{
-			"error": map[string]interface{}{
-				"type":    "authentication_error",
-				"message": "invalid API key",
-			},
-		}
-		b, _ := json.Marshal(env)
-		w.Write(b)
-	}))
-	defer ts.Close()
-
-	apiClient := usageTestClient(ts)
-	ctx, cancel := signalContext()
-	defer cancel()
-
-	_, _, err := apiClient.Usage(ctx, &client.UsageRequest{Period: "current"})
-	if err == nil {
-		t.Fatal("expected error for 401, got nil")
-	}
-
-	var authErr *client.AuthenticationError
-	if !isAuthError(err, &authErr) {
-		t.Errorf("expected AuthenticationError, got %T: %v", err, err)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// TestRunUsage_EmptyResponse
-// ---------------------------------------------------------------------------
-
 func TestRunUsage_EmptyResponse(t *testing.T) {
+	var buf bytes.Buffer
+	cmd := &cobra.Command{Use: "usage"}
+	cmd.SetOut(&buf)
+
 	emptyResp := &client.UsageResponse{
 		Period:        "March 2026",
 		TotalRequests: 0,
 		TotalCredits:  0,
 		ByService:     map[string]client.ServiceUsage{},
 	}
-
-	ts := usageMockServer(emptyResp)
-	defer ts.Close()
-
-	apiClient := usageTestClient(ts)
-	ctx, cancel := signalContext()
-	defer cancel()
-
-	result, resp, err := apiClient.Usage(ctx, &client.UsageRequest{Period: "current"})
-	if err != nil {
-		t.Fatalf("Usage() returned error: %v", err)
-	}
-
-	var buf bytes.Buffer
-	cmd := &cobra.Command{Use: "usage"}
-	cmd.SetOut(&buf)
-
-	if err := renderUsageTable(cmd, result, resp); err != nil {
+	if err := renderUsageTable(cmd, emptyResp); err != nil {
 		t.Fatalf("renderUsageTable returned error: %v", err)
 	}
 
 	out := buf.String()
-	if !strings.Contains(out, "Total Requests") {
-		t.Errorf("expected table output header, got:\n%s", out)
-	}
-	if !strings.Contains(out, "0") {
-		t.Errorf("expected zero values in output, got:\n%s", out)
+	if !strings.Contains(out, "No locally recorded API usage for this period yet.") {
+		t.Fatalf("expected empty-state guidance, got:\n%s", out)
 	}
 }
-
-// ---------------------------------------------------------------------------
-// TestFormatNumber
-// ---------------------------------------------------------------------------
 
 func TestFormatNumber(t *testing.T) {
 	tests := []struct {
@@ -373,30 +274,4 @@ func TestFormatNumber(t *testing.T) {
 			}
 		})
 	}
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-// isAuthError checks if the error is an AuthenticationError.
-func isAuthError(err error, target **client.AuthenticationError) bool {
-	var authErr *client.AuthenticationError
-	if ok := isErrType(err, &authErr); ok {
-		*target = authErr
-		return true
-	}
-	return false
-}
-
-// isErrType is a generic error type check helper.
-func isErrType[T error](err error, target *T) bool {
-	return err != nil && errorAs(err, target)
-}
-
-// errorAs wraps errors.As for use in generic helper.
-func errorAs[T error](err error, target *T) bool {
-	var zero T
-	_ = zero
-	return errors.As(err, target)
 }

@@ -1,0 +1,99 @@
+.nh
+.TH "DFIR-CLI" "1" "Apr 2026" "DFIR Lab" "DFIR CLI Manual"
+
+.SH NAME
+dfir-cli-ai - AI-powered DFIR assistant
+
+
+.SH SYNOPSIS
+\fBdfir-cli ai [question] [flags]\fP
+
+
+.SH DESCRIPTION
+Interactive AI assistant specialized in digital forensics and incident response.
+
+.PP
+Ask questions about forensic artifacts, pipe in tool output for analysis,
+or start an interactive chat session for extended investigations.
+
+.PP
+The AI assistant only answers DFIR-related questions. Topics outside
+digital forensics and incident response will be declined.
+
+.PP
+Requires a Starter, Professional, or Enterprise plan.
+
+.PP
+Examples:
+  # Ask a one-shot question
+  dfir-cli ai "What Windows event IDs indicate lateral movement?"
+
+.PP
+# Pipe tool output for analysis
+  vol.py -f memory.dmp windows.pslist | dfir-cli ai "Analyze for anomalies"
+
+.PP
+# Pipe dfir-cli results for deeper analysis
+  dfir-cli enrichment lookup --ip 1.2.3.4 -j | dfir-cli ai "Explain these results"
+
+.PP
+# Start an interactive chat session
+  dfir-cli ai chat
+
+.PP
+# Use a specific model
+  dfir-cli ai --model haiku "Quick: what is shimcache?"
+
+
+.SH OPTIONS
+\fB-h\fP, \fB--help\fP[=false]
+	help for ai
+
+.PP
+\fB--model\fP=""
+	AI model to use: "haiku" (fast) or "sonnet" (thorough). Default from config or "sonnet"
+
+.PP
+\fB--no-stream\fP[=false]
+	Disable streaming (wait for complete response)
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--api-key\fP=""
+	Override API key for this invocation
+
+.PP
+\fB--api-url\fP=""
+	Override API base URL (default from config)
+
+.PP
+\fB-j\fP, \fB--json\fP[=false]
+	Shorthand for --output json
+
+.PP
+\fB--no-color\fP[=false]
+	Disable colored output
+
+.PP
+\fB-o\fP, \fB--output\fP="table"
+	Output format: table, json, jsonl, csv
+
+.PP
+\fB-p\fP, \fB--profile\fP="default"
+	Named config profile
+
+.PP
+\fB-q\fP, \fB--quiet\fP[=false]
+	Minimal output
+
+.PP
+\fB--timeout\fP=1m0s
+	HTTP request timeout
+
+.PP
+\fB-v\fP, \fB--verbose\fP[=false]
+	Show debug information (HTTP requests/responses)
+
+
+.SH SEE ALSO
+\fBdfir-cli(1)\fP, \fBdfir-cli-ai-chat(1)\fP

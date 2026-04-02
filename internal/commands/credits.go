@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/dfir-lab/dfir-cli/internal/client"
@@ -17,8 +19,10 @@ import (
 // ---------------------------------------------------------------------------
 
 const (
-	stateFileName        = "state.json"
-	stateFilePerm        = os.FileMode(0600)
+	stateFileName      = "state.json"
+	stateFilePerm      = os.FileMode(0600)
+	usageStateFileName = "usage.json"
+	usageStateFilePerm = os.FileMode(0600)
 )
 
 // creditState holds the latest credit information captured from an API response.
@@ -29,9 +33,24 @@ type creditState struct {
 	LastRequestID    string `json:"last_request_id"`
 }
 
+type usageState struct {
+	Periods map[string]*usagePeriodState `json:"periods,omitempty"`
+}
+
+type usagePeriodState struct {
+	TotalRequests int                               `json:"total_requests"`
+	TotalCredits  int                               `json:"total_credits"`
+	ByService     map[string]*client.ServiceUsage   `json:"by_service,omitempty"`
+	ByOperation   map[string]*client.OperationUsage `json:"by_operation,omitempty"`
+}
+
 // statePath returns the full path to the credit state file.
 func statePath() string {
 	return filepath.Join(config.Dir(), stateFileName)
+}
+
+func usageStatePath() string {
+	return filepath.Join(config.Dir(), usageStateFileName)
 }
 
 // SaveCreditState persists credit information from an API response to disk.
@@ -55,6 +74,15 @@ func SaveCreditState(meta *client.ResponseMeta) error {
 	return writeCreditState(&state)
 }
 
+// SaveAPIState persists both the latest credit balance and a local usage event
+// for the given service/operation pair.
+func SaveAPIState(meta *client.ResponseMeta, service, operation string) error {
+	if err := SaveCreditState(meta); err != nil {
+		return err
+	}
+	return SaveUsageEvent(meta, service, operation)
+}
+
 // LoadCreditState reads the persisted credit state from disk.
 // Returns nil and an error if the file does not exist or cannot be read.
 func LoadCreditState() (*creditState, error) {
@@ -69,6 +97,161 @@ func LoadCreditState() (*creditState, error) {
 	}
 
 	return &state, nil
+}
+
+// SaveUsageEvent records a successful API call in the local usage ledger.
+func SaveUsageEvent(meta *client.ResponseMeta, service, operation string) error {
+	if meta == nil {
+		return nil
+	}
+
+	service = strings.TrimSpace(strings.ToLower(service))
+	operation = strings.TrimSpace(strings.ToLower(operation))
+	if service == "" || operation == "" {
+		return nil
+	}
+
+	state, err := loadUsageStateOrNew()
+	if err != nil {
+		return err
+	}
+
+	periodKey := timeNowMonth()
+	if state.Periods == nil {
+		state.Periods = make(map[string]*usagePeriodState)
+	}
+	period := state.Periods[periodKey]
+	if period == nil {
+		period = &usagePeriodState{
+			ByService:   make(map[string]*client.ServiceUsage),
+			ByOperation: make(map[string]*client.OperationUsage),
+		}
+		state.Periods[periodKey] = period
+	}
+	if period.ByService == nil {
+		period.ByService = make(map[string]*client.ServiceUsage)
+	}
+	if period.ByOperation == nil {
+		period.ByOperation = make(map[string]*client.OperationUsage)
+	}
+
+	period.TotalRequests++
+	period.TotalCredits += meta.CreditsUsed
+
+	serviceUsage := period.ByService[service]
+	if serviceUsage == nil {
+		serviceUsage = &client.ServiceUsage{}
+		period.ByService[service] = serviceUsage
+	}
+	serviceUsage.Requests++
+	serviceUsage.Credits += meta.CreditsUsed
+
+	operationKey := service + ":" + operation
+	operationUsage := period.ByOperation[operationKey]
+	if operationUsage == nil {
+		operationUsage = &client.OperationUsage{
+			Service:   service,
+			Operation: operation,
+		}
+		period.ByOperation[operationKey] = operationUsage
+	}
+	operationUsage.Requests++
+	operationUsage.Credits += meta.CreditsUsed
+
+	return writeUsageState(state)
+}
+
+func LoadUsageState() (*usageState, error) {
+	data, err := os.ReadFile(usageStatePath())
+	if err != nil {
+		return nil, err
+	}
+
+	var state usageState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return nil, fmt.Errorf("parse usage state: %w", err)
+	}
+	if state.Periods == nil {
+		state.Periods = make(map[string]*usagePeriodState)
+	}
+	return &state, nil
+}
+
+func loadUsageStateOrNew() (*usageState, error) {
+	state, err := LoadUsageState()
+	if err == nil {
+		return state, nil
+	}
+	if os.IsNotExist(err) {
+		return &usageState{Periods: make(map[string]*usagePeriodState)}, nil
+	}
+	return nil, err
+}
+
+func buildUsageResponse(periodArg, serviceFilter string) (*client.UsageResponse, error) {
+	periodKey, periodLabel, err := resolveUsagePeriod(periodArg)
+	if err != nil {
+		return nil, err
+	}
+
+	serviceFilter = strings.TrimSpace(strings.ToLower(serviceFilter))
+	result := &client.UsageResponse{
+		Period:    periodLabel,
+		ByService: make(map[string]client.ServiceUsage),
+	}
+
+	state, err := LoadUsageState()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return result, nil
+		}
+		return nil, err
+	}
+
+	period := state.Periods[periodKey]
+	if period == nil {
+		return result, nil
+	}
+
+	if serviceFilter == "" {
+		result.TotalRequests = period.TotalRequests
+		result.TotalCredits = period.TotalCredits
+		for service, usage := range period.ByService {
+			if usage == nil {
+				continue
+			}
+			result.ByService[service] = *usage
+		}
+	} else if usage := period.ByService[serviceFilter]; usage != nil {
+		result.TotalRequests = usage.Requests
+		result.TotalCredits = usage.Credits
+		result.ByService[serviceFilter] = *usage
+	}
+
+	for _, op := range period.ByOperation {
+		if op == nil {
+			continue
+		}
+		if serviceFilter != "" && op.Service != serviceFilter {
+			continue
+		}
+		result.TopOperations = append(result.TopOperations, *op)
+	}
+
+	sort.Slice(result.TopOperations, func(i, j int) bool {
+		if result.TopOperations[i].Requests != result.TopOperations[j].Requests {
+			return result.TopOperations[i].Requests > result.TopOperations[j].Requests
+		}
+		if result.TopOperations[i].Credits != result.TopOperations[j].Credits {
+			return result.TopOperations[i].Credits > result.TopOperations[j].Credits
+		}
+		if result.TopOperations[i].Service != result.TopOperations[j].Service {
+			return result.TopOperations[i].Service < result.TopOperations[j].Service
+		}
+		return result.TopOperations[i].Operation < result.TopOperations[j].Operation
+	})
+
+	return result, nil
 }
 
 // writeCreditState serialises state to JSON and writes it atomically.
@@ -98,10 +281,40 @@ func writeCreditState(state *creditState) error {
 	return nil
 }
 
+func writeUsageState(state *usageState) error {
+	if err := config.EnsureDir(); err != nil {
+		return fmt.Errorf("creating config directory: %w", err)
+	}
+
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal usage state: %w", err)
+	}
+	data = append(data, '\n')
+
+	path := usageStatePath()
+	tmpPath := path + ".tmp"
+
+	if err := os.WriteFile(tmpPath, data, usageStateFilePerm); err != nil {
+		return fmt.Errorf("write usage state: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("rename usage state: %w", err)
+	}
+
+	return nil
+}
+
 // timeNowUTC returns the current UTC time as an RFC 3339 string.
 // Extracted to a package-level variable so tests can override it if needed.
 var timeNowUTC = func() string {
 	return time.Now().UTC().Format(time.RFC3339)
+}
+
+var timeNowMonth = func() string {
+	return time.Now().UTC().Format("2006-01")
 }
 
 // ---------------------------------------------------------------------------

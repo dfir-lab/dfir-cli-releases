@@ -1,0 +1,94 @@
+.nh
+.TH "DFIR-CLI" "1" "Apr 2026" "DFIR Lab" "DFIR CLI Manual"
+
+.SH NAME
+dfir-cli-exposure-scan - Scan domains for external exposure
+
+
+.SH SYNOPSIS
+\fBdfir-cli exposure scan [flags]\fP
+
+
+.SH DESCRIPTION
+Scan one or more domains for external exposure.
+
+.PP
+Input methods:
+  --domain example.com                          Single domain
+  echo "example.com" | dfir-cli exposure scan   Stdin
+  --batch domains.txt                           Batch file (one domain per line, use - for stdin)
+
+.PP
+The scan may take up to 3 minutes per target depending on the providers
+queried. A spinner is displayed while waiting.
+
+
+.SH OPTIONS
+\fB--batch\fP=""
+	File with one domain per line (use - for stdin)
+
+.PP
+\fB--concurrency\fP=5
+	Parallel requests for batch mode (1-20)
+
+.PP
+\fB--domain\fP=""
+	Target domain to scan
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for scan
+
+.PP
+\fB--target-type\fP="auto"
+	Target type hint: domain, ip, auto
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--api-key\fP=""
+	Override API key for this invocation
+
+.PP
+\fB--api-url\fP=""
+	Override API base URL (default from config)
+
+.PP
+\fB-j\fP, \fB--json\fP[=false]
+	Shorthand for --output json
+
+.PP
+\fB--no-color\fP[=false]
+	Disable colored output
+
+.PP
+\fB-o\fP, \fB--output\fP="table"
+	Output format: table, json, jsonl, csv
+
+.PP
+\fB-p\fP, \fB--profile\fP="default"
+	Named config profile
+
+.PP
+\fB-q\fP, \fB--quiet\fP[=false]
+	Minimal output
+
+.PP
+\fB--timeout\fP=1m0s
+	HTTP request timeout
+
+.PP
+\fB-v\fP, \fB--verbose\fP[=false]
+	Show debug information (HTTP requests/responses)
+
+
+.SH EXAMPLE
+.EX
+  dfir-cli exposure scan --domain example.com
+  dfir-cli exposure scan --domain example.com --target-type domain
+  dfir-cli exposure scan --batch domains.txt
+  echo "example.com" | dfir-cli exposure scan
+.EE
+
+
+.SH SEE ALSO
+\fBdfir-cli-exposure(1)\fP

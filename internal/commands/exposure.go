@@ -235,7 +235,7 @@ func runSingleExposureScan(
 
 	// Persist credit state for the credits command.
 	if resp != nil {
-		_ = SaveCreditState(&resp.Meta)
+		_ = SaveAPIState(&resp.Meta, "exposure", "scan")
 	}
 
 	code := renderExposureResult(result, resp, format, quiet)

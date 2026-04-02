@@ -148,6 +148,117 @@ func TestMaskAPIKey(t *testing.T) {
 	}
 }
 
+func TestNormalizeAPIURL(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "empty uses current default",
+			in:   "",
+			want: "https://dfir-lab.ch/api/v1",
+		},
+		{
+			name: "platform host downgrades to live api host",
+			in:   "https://platform.dfir-lab.ch/api/v1",
+			want: "https://dfir-lab.ch/api/v1",
+		},
+		{
+			name: "platform path suffix downgrades to live api host",
+			in:   "https://platform.dfir-lab.ch/api/v1/ai/chat",
+			want: "https://dfir-lab.ch/api/v1/ai/chat",
+		},
+		{
+			name: "custom endpoint unchanged",
+			in:   "https://staging.example.com/api/v1",
+			want: "https://staging.example.com/api/v1",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := NormalizeAPIURL(tc.in); got != tc.want {
+				t.Fatalf("NormalizeAPIURL(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeAIAPIURL(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "empty uses ai default",
+			in:   "",
+			want: "https://dfir-lab.ch/api/v1",
+		},
+		{
+			name: "platform default downgrades to ai host",
+			in:   "https://platform.dfir-lab.ch/api/v1",
+			want: "https://dfir-lab.ch/api/v1",
+		},
+		{
+			name: "legacy host stays legacy",
+			in:   "https://dfir-lab.ch/api/v1",
+			want: "https://dfir-lab.ch/api/v1",
+		},
+		{
+			name: "custom endpoint unchanged",
+			in:   "https://staging.example.com/api/v1",
+			want: "https://staging.example.com/api/v1",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := NormalizeAIAPIURL(tc.in); got != tc.want {
+				t.Fatalf("NormalizeAIAPIURL(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeAuthValidateAPIURL(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "empty uses platform auth host",
+			in:   "",
+			want: "https://platform.dfir-lab.ch/api/v1",
+		},
+		{
+			name: "live api host upgrades to platform auth host",
+			in:   "https://dfir-lab.ch/api/v1",
+			want: "https://platform.dfir-lab.ch/api/v1",
+		},
+		{
+			name: "live api path suffix upgrades to platform auth host",
+			in:   "https://dfir-lab.ch/api/v1/auth/validate",
+			want: "https://platform.dfir-lab.ch/api/v1/auth/validate",
+		},
+		{
+			name: "custom endpoint unchanged",
+			in:   "https://staging.example.com/api/v1",
+			want: "https://staging.example.com/api/v1",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := NormalizeAuthValidateAPIURL(tc.in); got != tc.want {
+				t.Fatalf("NormalizeAuthValidateAPIURL(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
 // ---------------------------------------------------------------------------
 // TestValidateProfileName
 // ---------------------------------------------------------------------------

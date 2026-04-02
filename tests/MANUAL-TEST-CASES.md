@@ -11,7 +11,7 @@
 - A valid DFIR Lab API key (format: `sk-dfir-...`, 20-128 characters)
 - A secondary/invalid API key for negative tests (e.g., `sk-dfir-invalidkey000000`)
 - The `dfir-cli` binary built or installed and available in `$PATH`
-- Internet connectivity to `https://dfir-lab.ch`
+- Internet connectivity to `https://platform.dfir-lab.ch`
 - A sample `.eml` phishing email file (referred to as `sample-phish.eml` below)
 - `jq` installed for JSON output validation
 - Shell: bash or zsh

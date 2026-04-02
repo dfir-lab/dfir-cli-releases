@@ -78,7 +78,7 @@ func runPhishingSafeBrowsing(urlFlag, batchFlag string) error {
 	}
 
 	if resp != nil {
-		_ = SaveCreditState(&resp.Meta)
+		_ = SaveAPIState(&resp.Meta, "phishing", "safe-browsing")
 	}
 
 	switch format {

@@ -31,6 +31,16 @@ func newAPIClient() (*client.Client, error) {
 	return client.New(apiKey, GetAPIURL(), version.UserAgent(), GetTimeout(), IsVerbose()), nil
 }
 
+// newAIClient creates an authenticated API client for AI chat requests. AI is
+// currently served from a different production host than the rest of the API.
+func newAIClient() (*client.Client, error) {
+	apiKey := GetAPIKey()
+	if apiKey == "" {
+		return nil, fmt.Errorf("no API key configured. Run: dfir-cli config init")
+	}
+	return client.New(apiKey, GetAIAPIURL(), version.UserAgent(), GetTimeout(), IsVerbose()), nil
+}
+
 // signalContext returns a context that is cancelled when the user presses
 // Ctrl+C (SIGINT). First Ctrl+C requests graceful cancellation; a second
 // Ctrl+C force-quits immediately.
@@ -54,9 +64,11 @@ func signalContext() (context.Context, context.CancelFunc) {
 func signalContextFromChannel(sigCh <-chan os.Signal) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(context.Background())
 	stopCh := make(chan struct{})
+	doneCh := make(chan struct{})
 	var once sync.Once
 
 	go func() {
+		defer close(doneCh)
 		interruptCount := 0
 		for {
 			select {
@@ -81,6 +93,7 @@ func signalContextFromChannel(sigCh <-chan os.Signal) (context.Context, context.
 		once.Do(func() {
 			close(stopCh)
 			cancel()
+			<-doneCh
 		})
 	}
 }

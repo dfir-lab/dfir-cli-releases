@@ -1,0 +1,71 @@
+.nh
+.TH "DFIR-CLI" "1" "Apr 2026" "DFIR Lab" "DFIR CLI Manual"
+
+.SH NAME
+dfir-cli-phishing-urlscan - Scan a URL with URLScan.io
+
+
+.SH SYNOPSIS
+\fBdfir-cli phishing urlscan [flags]\fP
+
+
+.SH DESCRIPTION
+Submit a URL to URLScan.io for analysis.
+
+.PP
+Costs 3 credits per scan.
+
+.PP
+Input methods:
+  --url https://example.com
+  echo "https://example.com" | dfir-cli phishing urlscan
+
+
+.SH OPTIONS
+\fB-h\fP, \fB--help\fP[=false]
+	help for urlscan
+
+.PP
+\fB--url\fP=""
+	URL to scan (required)
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--api-key\fP=""
+	Override API key for this invocation
+
+.PP
+\fB--api-url\fP=""
+	Override API base URL (default from config)
+
+.PP
+\fB-j\fP, \fB--json\fP[=false]
+	Shorthand for --output json
+
+.PP
+\fB--no-color\fP[=false]
+	Disable colored output
+
+.PP
+\fB-o\fP, \fB--output\fP="table"
+	Output format: table, json, jsonl, csv
+
+.PP
+\fB-p\fP, \fB--profile\fP="default"
+	Named config profile
+
+.PP
+\fB-q\fP, \fB--quiet\fP[=false]
+	Minimal output
+
+.PP
+\fB--timeout\fP=1m0s
+	HTTP request timeout
+
+.PP
+\fB-v\fP, \fB--verbose\fP[=false]
+	Show debug information (HTTP requests/responses)
+
+
+.SH SEE ALSO
+\fBdfir-cli-phishing(1)\fP

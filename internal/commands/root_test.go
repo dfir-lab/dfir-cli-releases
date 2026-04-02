@@ -96,7 +96,7 @@ func TestRootRegistersUsageCommand(t *testing.T) {
 }
 
 func TestRootUsageTemplateReflectsShippedBehavior(t *testing.T) {
-	if !strings.Contains(usageTemplate, "usage         Display API usage statistics") {
+	if !strings.Contains(usageTemplate, "usage         Display locally recorded API usage statistics") {
 		t.Fatalf("usage template does not list usage command")
 	}
 	if strings.Contains(usageTemplate, "phishing analyze --url example.com") {

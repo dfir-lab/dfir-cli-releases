@@ -1,0 +1,78 @@
+.nh
+.TH "DFIR-CLI" "1" "Apr 2026" "DFIR Lab" "DFIR CLI Manual"
+
+.SH NAME
+dfir-cli-ai-chat - Start an interactive AI chat session
+
+
+.SH SYNOPSIS
+\fBdfir-cli ai chat [flags]\fP
+
+
+.SH DESCRIPTION
+Start an interactive DFIR AI assistant chat session.
+
+.PP
+The assistant specializes in digital forensics and incident response.
+Conversation history is maintained within the session.
+
+.PP
+Special commands:
+  /help       Show available commands
+  /clear      Clear conversation history
+  /model NAME Switch model (haiku or sonnet)
+  /exit       Exit the chat session
+  Ctrl+C      Cancel current response
+
+.PP
+Requires a Starter, Professional, or Enterprise plan.
+
+
+.SH OPTIONS
+\fB-h\fP, \fB--help\fP[=false]
+	help for chat
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--api-key\fP=""
+	Override API key for this invocation
+
+.PP
+\fB--api-url\fP=""
+	Override API base URL (default from config)
+
+.PP
+\fB-j\fP, \fB--json\fP[=false]
+	Shorthand for --output json
+
+.PP
+\fB--model\fP=""
+	AI model to use: "haiku" (fast) or "sonnet" (thorough). Default from config or "sonnet"
+
+.PP
+\fB--no-color\fP[=false]
+	Disable colored output
+
+.PP
+\fB-o\fP, \fB--output\fP="table"
+	Output format: table, json, jsonl, csv
+
+.PP
+\fB-p\fP, \fB--profile\fP="default"
+	Named config profile
+
+.PP
+\fB-q\fP, \fB--quiet\fP[=false]
+	Minimal output
+
+.PP
+\fB--timeout\fP=1m0s
+	HTTP request timeout
+
+.PP
+\fB-v\fP, \fB--verbose\fP[=false]
+	Show debug information (HTTP requests/responses)
+
+
+.SH SEE ALSO
+\fBdfir-cli-ai(1)\fP

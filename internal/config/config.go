@@ -22,6 +22,9 @@ const (
 	defaultProfileKey = "default"
 
 	defaultAPIURL       = "https://dfir-lab.ch/api/v1"
+	platformAPIURL      = "https://platform.dfir-lab.ch/api/v1"
+	aiDefaultAPIURL     = defaultAPIURL
+	authValidateAPIURL  = platformAPIURL
 	defaultOutputFormat = "table"
 	defaultTimeout      = 60 * time.Second
 	defaultConcurrency  = 5
@@ -155,6 +158,7 @@ func Load(profile string) (*Profile, error) {
 
 	// Apply defaults for any zero-valued fields that should have defaults.
 	applyDefaults(p)
+	p.APIURL = NormalizeAPIURL(p.APIURL)
 
 	// If the API key source is "keychain", try to retrieve from the system keychain.
 	if p.APIKeySource == "keychain" {
@@ -196,6 +200,7 @@ func Save(profile string, p *Profile) error {
 			p.APIKeySource = "keychain"
 			saved := *p
 			saved.APIKey = ""
+			saved.APIURL = NormalizeAPIURL(saved.APIURL)
 			setProfileInViper(v, profile, &saved)
 			return writeConfig(v)
 		}
@@ -203,6 +208,7 @@ func Save(profile string, p *Profile) error {
 		p.APIKeySource = "config"
 	}
 
+	p.APIURL = NormalizeAPIURL(p.APIURL)
 	setProfileInViper(v, profile, p)
 
 	return writeConfig(v)
@@ -255,6 +261,7 @@ func ListProfiles() (map[string]*Profile, string, error) {
 			return nil, "", fmt.Errorf("unmarshalling profile %q: %w", name, err)
 		}
 		applyDefaults(p)
+		p.APIURL = NormalizeAPIURL(p.APIURL)
 
 		// Resolve keychain-sourced API keys.
 		if p.APIKeySource == "keychain" {
@@ -293,12 +300,14 @@ func WriteInitialConfig(profile string, p *Profile) error {
 			p.APIKeySource = "keychain"
 			saved := *p
 			saved.APIKey = ""
+			saved.APIURL = NormalizeAPIURL(saved.APIURL)
 			setProfileInViper(v, profile, &saved)
 			return writeConfig(v)
 		}
 		p.APIKeySource = "config"
 	}
 
+	p.APIURL = NormalizeAPIURL(p.APIURL)
 	setProfileInViper(v, profile, p)
 
 	return writeConfig(v)
@@ -337,6 +346,50 @@ func MaskAPIKey(key string) string {
 	tail := key[len(key)-4:]
 	masked := len(key) - len(apiKeyPrefix) - 4
 	return apiKeyPrefix + strings.Repeat("*", masked) + tail
+}
+
+// NormalizeAPIURL resolves the live operational API base URL while leaving
+// custom endpoints untouched. Older configs may still point at the platform
+// host, which serves docs/app pages but not most API routes.
+func NormalizeAPIURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return defaultAPIURL
+	}
+
+	raw = strings.TrimRight(raw, "/")
+	if raw == platformAPIURL {
+		return defaultAPIURL
+	}
+	if strings.HasPrefix(raw, platformAPIURL+"/") {
+		return defaultAPIURL + strings.TrimPrefix(raw, platformAPIURL)
+	}
+	return raw
+}
+
+// NormalizeAIAPIURL resolves the base URL for AI chat requests.
+func NormalizeAIAPIURL(raw string) string {
+	return NormalizeAPIURL(raw)
+}
+
+// NormalizeAuthValidateAPIURL resolves the API base URL used for
+// /auth/validate. That route is currently served from platform.dfir-lab.ch,
+// even though the operational API routes are served from dfir-lab.ch.
+func NormalizeAuthValidateAPIURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return authValidateAPIURL
+	}
+
+	raw = strings.TrimRight(raw, "/")
+	switch {
+	case raw == defaultAPIURL, raw == platformAPIURL:
+		return authValidateAPIURL
+	case strings.HasPrefix(raw, defaultAPIURL+"/"):
+		return authValidateAPIURL + strings.TrimPrefix(raw, defaultAPIURL)
+	default:
+		return raw
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -428,6 +481,7 @@ func applyDefaults(p *Profile) {
 	if p.APIURL == "" {
 		p.APIURL = defaultAPIURL
 	}
+	p.APIURL = NormalizeAPIURL(p.APIURL)
 	if p.OutputFormat == "" {
 		p.OutputFormat = defaultOutputFormat
 	}

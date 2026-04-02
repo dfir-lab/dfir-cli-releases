@@ -1,0 +1,71 @@
+.nh
+.TH "DFIR-CLI" "1" "Apr 2026" "DFIR Lab" "DFIR CLI Manual"
+
+.SH NAME
+dfir-cli-update - Check for and install updates
+
+
+.SH SYNOPSIS
+\fBdfir-cli update [flags]\fP
+
+
+.SH DESCRIPTION
+Check for a newer version of dfir-cli and install it.
+
+.PP
+Without flags, dfir-cli downloads and installs the latest version
+automatically. Homebrew and Scoop installations are detected and
+updated through their respective package managers.
+
+.PP
+Use --check to only check for updates without installing.
+
+
+.SH OPTIONS
+\fB--check\fP[=false]
+	Only check for updates, don't install
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for update
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--api-key\fP=""
+	Override API key for this invocation
+
+.PP
+\fB--api-url\fP=""
+	Override API base URL (default from config)
+
+.PP
+\fB-j\fP, \fB--json\fP[=false]
+	Shorthand for --output json
+
+.PP
+\fB--no-color\fP[=false]
+	Disable colored output
+
+.PP
+\fB-o\fP, \fB--output\fP="table"
+	Output format: table, json, jsonl, csv
+
+.PP
+\fB-p\fP, \fB--profile\fP="default"
+	Named config profile
+
+.PP
+\fB-q\fP, \fB--quiet\fP[=false]
+	Minimal output
+
+.PP
+\fB--timeout\fP=1m0s
+	HTTP request timeout
+
+.PP
+\fB-v\fP, \fB--verbose\fP[=false]
+	Show debug information (HTTP requests/responses)
+
+
+.SH SEE ALSO
+\fBdfir-cli(1)\fP

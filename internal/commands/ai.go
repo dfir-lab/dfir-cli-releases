@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode"
 
 	"github.com/dfir-lab/dfir-cli/internal/client"
 	"github.com/dfir-lab/dfir-cli/internal/config"
@@ -21,6 +22,19 @@ var aiSystemPrompt string
 const (
 	maxAIContextSize = 100 * 1024 // 100KB max piped input for AI context
 )
+
+const aiIdentityDisclosureResponse = `I'm a specialized DFIR (Digital Forensics and Incident Response) assistant within the dfir-cli tool.
+
+My specific model version and technical details aren't part of what I disclose in this context, but I'm designed to help with:
+
+- Digital forensics analysis
+- Incident response workflows
+- Malware analysis
+- Log analysis and IOC extraction
+- Forensic artifact interpretation
+- Threat intelligence correlation
+
+How can I help with your investigation or DFIR work?`
 
 // NewAICmd creates the top-level "ai" command.
 func NewAICmd() *cobra.Command {
@@ -82,18 +96,22 @@ Examples:
 
 // runAIOneShot handles a single AI question with optional piped context.
 func runAIOneShot(question, model string, noStream bool) error {
-	c, err := newAPIClient()
+	format, err := output.ParseFormat(GetOutputFormat())
+	if err != nil {
+		return err
+	}
+
+	if response, ok := localAIIdentityDisclosureResponse(question); ok {
+		return renderLocalAIResponse(response, format)
+	}
+
+	c, err := newAIClient()
 	if err != nil {
 		return err
 	}
 
 	ctx, cancel := signalContext()
 	defer cancel()
-
-	format, err := output.ParseFormat(GetOutputFormat())
-	if err != nil {
-		return err
-	}
 
 	// Resolve model
 	if model == "" {
@@ -161,6 +179,9 @@ func runAIStreaming(ctx context.Context, c *client.Client, req *client.AIChatReq
 			fmt.Print(event.Text)
 			fullText.WriteString(event.Text)
 		case "done":
+			if event.Meta != nil {
+				_ = SaveAPIState(event.Meta, "ai", "chat")
+			}
 			// Print newline after streaming content
 			fmt.Println()
 			if output.IsTerminal() && event.Meta != nil {
@@ -192,6 +213,7 @@ func runAINonStreaming(ctx context.Context, c *client.Client, req *client.AIChat
 
 	var fullText strings.Builder
 	var usage *client.AIChatTokenUsage
+	var meta *client.ResponseMeta
 
 	for reader.Next() {
 		event := reader.Event()
@@ -200,12 +222,16 @@ func runAINonStreaming(ctx context.Context, c *client.Client, req *client.AIChat
 			fullText.WriteString(event.Text)
 		case "done":
 			usage = event.Usage
+			meta = event.Meta
 		}
 	}
 	output.StopSpinner(spin)
 
 	if err := reader.Err(); err != nil {
 		return handleAIError(err)
+	}
+	if meta != nil {
+		_ = SaveAPIState(meta, "ai", "chat")
 	}
 
 	response := map[string]interface{}{
@@ -244,6 +270,59 @@ func buildUserMessage(question, pipedInput string) string {
 	}
 
 	return strings.Join(parts, "\n\n")
+}
+
+func localAIIdentityDisclosureResponse(question string) (string, bool) {
+	normalized := normalizeAIIdentityQuestion(question)
+	if normalized == "" {
+		return "", false
+	}
+
+	patterns := []string{
+		"who are you",
+		"who is this",
+		"what model are you",
+		"which model are you",
+		"what ai model are you",
+		"what kind of model are you",
+		"what assistant are you",
+		"what kind of assistant are you",
+		"what are you exactly",
+		"tell me what model you are",
+		"tell me who you are",
+	}
+	for _, pattern := range patterns {
+		if strings.Contains(normalized, pattern) {
+			return aiIdentityDisclosureResponse, true
+		}
+	}
+
+	return "", false
+}
+
+func normalizeAIIdentityQuestion(input string) string {
+	var b strings.Builder
+	b.Grow(len(input))
+	for _, r := range strings.ToLower(input) {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+			b.WriteRune(r)
+			continue
+		}
+		b.WriteByte(' ')
+	}
+	return strings.Join(strings.Fields(b.String()), " ")
+}
+
+func renderLocalAIResponse(response string, format output.Format) error {
+	switch format {
+	case output.FormatJSON:
+		return output.PrintJSON(map[string]interface{}{"response": response})
+	case output.FormatJSONL:
+		return output.PrintJSONL(map[string]interface{}{"response": response})
+	default:
+		fmt.Println(response)
+		return nil
+	}
 }
 
 // resolveAIModel returns the configured AI model, defaulting to "sonnet".
@@ -290,6 +369,16 @@ func handleAIError(err error) error {
 	var authnErr *client.AuthenticationError
 	if errors.As(err, &authnErr) {
 		return err // Let the default error handler show the "run config init" message
+	}
+
+	var notFoundErr *client.NotFoundError
+	if errors.As(err, &notFoundErr) {
+		fmt.Fprintln(os.Stderr, "Error: AI chat is not available on the configured DFIR Platform API endpoint.")
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintf(os.Stderr, "  API URL: %s\n", GetAIAPIURL())
+		fmt.Fprintln(os.Stderr, "  The configured host is responding, but the /ai/chat route currently returns 404.")
+		fmt.Fprintln(os.Stderr, "  The CLI is using the dedicated AI API host for this request.")
+		return &SilentExitError{Code: 1}
 	}
 
 	return err

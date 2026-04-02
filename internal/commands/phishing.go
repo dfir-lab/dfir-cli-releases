@@ -148,7 +148,7 @@ func executePhishingStandard(ctx context.Context, c *client.Client, req *client.
 
 	// Persist credit state for the credits command.
 	if resp != nil {
-		_ = SaveCreditState(&resp.Meta)
+		_ = SaveAPIState(&resp.Meta, "phishing", "analyze")
 	}
 
 	switch format {
@@ -181,7 +181,7 @@ func executePhishingAI(ctx context.Context, c *client.Client, req *client.Phishi
 
 	// Persist credit state for the credits command.
 	if resp != nil {
-		_ = SaveCreditState(&resp.Meta)
+		_ = SaveAPIState(&resp.Meta, "phishing", "analyze-ai")
 	}
 
 	switch format {

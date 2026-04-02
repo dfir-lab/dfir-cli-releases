@@ -1,0 +1,69 @@
+.nh
+.TH "DFIR-CLI" "1" "Apr 2026" "DFIR Lab" "DFIR CLI Manual"
+
+.SH NAME
+dfir-cli - DFIR Lab CLI — Threat intelligence from the command line
+
+
+.SH SYNOPSIS
+\fBdfir-cli [flags]\fP
+
+
+.SH DESCRIPTION
+DFIR Lab CLI wraps the DFIR Platform API to bring threat intelligence
+directly into your terminal. Analyze phishing campaigns, scan for credential
+exposures, and enrich indicators of compromise (IOCs) — all from the command line.
+
+.PP
+Capabilities include:
+  - Phishing analysis: analyze emails and investigate URLs via phishing toolkit commands
+  - Exposure scanning: search for leaked credentials across breach datasets
+  - IOC enrichment: look up domains, IPs, hashes, and emails against curated threat feeds
+
+.PP
+Authenticate with an API key from https://platform.dfir-lab.ch and start investigating.
+
+
+.SH OPTIONS
+\fB--api-key\fP=""
+	Override API key for this invocation
+
+.PP
+\fB--api-url\fP=""
+	Override API base URL (default from config)
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for dfir-cli
+
+.PP
+\fB-j\fP, \fB--json\fP[=false]
+	Shorthand for --output json
+
+.PP
+\fB--no-color\fP[=false]
+	Disable colored output
+
+.PP
+\fB-o\fP, \fB--output\fP="table"
+	Output format: table, json, jsonl, csv
+
+.PP
+\fB-p\fP, \fB--profile\fP="default"
+	Named config profile
+
+.PP
+\fB-q\fP, \fB--quiet\fP[=false]
+	Minimal output
+
+.PP
+\fB--timeout\fP=1m0s
+	HTTP request timeout
+
+.PP
+\fB-v\fP, \fB--verbose\fP[=false]
+	Show debug information (HTTP requests/responses)
+
+
+.SH SEE ALSO
+\fBdfir-cli-ai(1)\fP, \fBdfir-cli-completion(1)\fP, \fBdfir-cli-config(1)\fP, \fBdfir-cli-credits(1)\fP, \fBdfir-cli-enrichment(1)\fP, \fBdfir-cli-exposure(1)\fP, \fBdfir-cli-phishing(1)\fP, \fBdfir-cli-update(1)\fP, \fBdfir-cli-usage(1)\fP, \fBdfir-cli-version(1)\fP

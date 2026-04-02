@@ -211,17 +211,51 @@ func GetAPIKey() string {
 func GetAPIURL() string {
 	// 1. Explicit flag
 	if v := rootCmd.PersistentFlags().Lookup("api-url"); v != nil && v.Changed {
-		return v.Value.String()
+		return config.NormalizeAPIURL(v.Value.String())
 	}
 	// 2. Environment variable
 	if url := viper.GetString("api_url"); url != "" {
-		return url
+		return config.NormalizeAPIURL(url)
 	}
 	// 3. Config file profile
 	if p := loadProfile(); p != nil && p.APIURL != "" {
-		return p.APIURL
+		return config.NormalizeAPIURL(p.APIURL)
 	}
-	return "https://dfir-lab.ch/api/v1"
+	return config.NormalizeAPIURL("")
+}
+
+// GetAIAPIURL returns the API base URL used by AI chat requests.
+func GetAIAPIURL() string {
+	// 1. Explicit flag
+	if v := rootCmd.PersistentFlags().Lookup("api-url"); v != nil && v.Changed {
+		return config.NormalizeAIAPIURL(v.Value.String())
+	}
+	// 2. Environment variable
+	if url := viper.GetString("api_url"); url != "" {
+		return config.NormalizeAIAPIURL(url)
+	}
+	// 3. Config file profile
+	if p := loadProfile(); p != nil && p.APIURL != "" {
+		return config.NormalizeAIAPIURL(p.APIURL)
+	}
+	return config.NormalizeAIAPIURL("")
+}
+
+// GetAuthValidateAPIURL returns the API base URL used for auth validation.
+func GetAuthValidateAPIURL() string {
+	// 1. Explicit flag
+	if v := rootCmd.PersistentFlags().Lookup("api-url"); v != nil && v.Changed {
+		return config.NormalizeAuthValidateAPIURL(v.Value.String())
+	}
+	// 2. Environment variable
+	if url := viper.GetString("api_url"); url != "" {
+		return config.NormalizeAuthValidateAPIURL(url)
+	}
+	// 3. Config file profile
+	if p := loadProfile(); p != nil && p.APIURL != "" {
+		return config.NormalizeAuthValidateAPIURL(p.APIURL)
+	}
+	return config.NormalizeAuthValidateAPIURL("")
 }
 
 // GetOutputFormat returns the selected output format (table, json, jsonl, csv).
@@ -328,7 +362,7 @@ AI ASSISTANT:
 
 ACCOUNT:
   credits       View cached API credit balance from the last API call
-  usage         Display API usage statistics
+  usage         Display locally recorded API usage statistics
 
 CONFIGURATION:
   config        Manage CLI configuration and profiles
@@ -352,7 +386,7 @@ GETTING STARTED:
   $ dfir-cli enrichment lookup --ip 1.2.3.4      Enrich an IP address
   $ dfir-cli phishing analyze --file email.eml    Analyse a suspicious email
   $ dfir-cli exposure scan --domain example.com   Scan for exposures
-  $ dfir-cli usage --period current               Review usage this month
+  $ dfir-cli usage --period current               Review locally recorded usage this month
   $ dfir-cli ai "What artifacts show persistence?" Ask the AI assistant
 
 LEARN MORE:

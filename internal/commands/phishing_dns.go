@@ -75,7 +75,7 @@ func runPhishingDNS(domain string) error {
 
 	// Persist credit state.
 	if resp != nil {
-		_ = SaveCreditState(&resp.Meta)
+		_ = SaveAPIState(&resp.Meta, "phishing", "dns")
 	}
 
 	switch {

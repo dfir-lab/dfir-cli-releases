@@ -17,7 +17,7 @@ A powerful command-line toolkit for SOC analysts and incident responders, powere
 - **Phishing toolkit** -- DNS analysis, blacklist checks, GeoIP, Safe Browsing, CheckPhish, URLScan, URL expansion, and URL enrichment
 - **IOC enrichment** -- IP, domain, URL, hash, and email lookups with multi-provider results
 - **External exposure scanning** for domains with concurrent batch support
-- **API usage tracking** -- view request counts and credit consumption by service
+- **Local usage tracking** -- view request counts and credit consumption recorded by this CLI
 - **Multiple output formats** -- table, JSON, JSONL, and `--json`/`-j` shorthand
 - **Batch processing** from files or stdin with configurable `--concurrency`
 - **Shell completions** for bash, zsh, and fish
@@ -156,7 +156,7 @@ dfir-cli
 ├── exposure
 │   └── scan              Scan domains for external exposure
 ├── credits               View cached API credit balance
-├── usage                 View API usage statistics
+├── usage                 View locally recorded API usage statistics
 ├── config
 │   ├── init              Interactive first-run setup
 │   ├── set               Set a configuration value
@@ -246,7 +246,7 @@ dfir-cli exposure scan --batch domains.txt --concurrency 5
 
 ### Account
 
-Check your cached credit balance (from the most recent API call) and usage:
+Check your cached credit balance and locally recorded usage:
 
 ```bash
 dfir-cli credits
@@ -255,6 +255,7 @@ dfir-cli usage --period 2026-02 --service enrichment
 ```
 
 `dfir-cli credits` reads locally cached metadata and does not trigger a new API request.
+`dfir-cli usage` reads locally recorded CLI activity and does not trigger a new API request.
 
 ### Piping and scripting
 

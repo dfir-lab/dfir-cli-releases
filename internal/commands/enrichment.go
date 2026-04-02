@@ -279,7 +279,7 @@ func runEnrichmentLookup(cmd *cobra.Command, f enrichmentLookupFlags) error {
 
 	// Persist credit state for the credits command.
 	if lastMeta != nil {
-		_ = SaveCreditState(&lastMeta.Meta)
+		_ = SaveAPIState(&lastMeta.Meta, "enrichment", "lookup")
 	}
 
 	// Apply --providers and --min-score filters.

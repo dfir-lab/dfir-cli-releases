@@ -3,8 +3,10 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/dfir-lab/dfir-cli/internal/client"
 	"github.com/dfir-lab/dfir-cli/internal/output"
@@ -22,17 +24,20 @@ func NewUsageCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "usage",
-		Short: "Display API usage statistics",
-		Long: `Display API usage statistics including request counts, credit consumption,
-and a breakdown by service.
+		Short: "Display locally recorded API usage statistics",
+		Long: `Display locally recorded API usage statistics including request counts,
+credit consumption, and a breakdown by service.
 
 The period flag controls which billing period to display:
   current   — the current month (default)
   previous  — the previous month
   YYYY-MM   — a specific month (e.g. 2026-03)
 
-Optionally filter by service (phishing, exposure, enrichment) and limit
-the number of top operations shown.`,
+Optionally filter by service (phishing, exposure, enrichment, ai) and limit
+the number of top operations shown.
+
+Usage is built from successful dfir-cli API calls recorded on this machine.
+The command does not make a network request.`,
 		Example: `  dfir-cli usage
   dfir-cli usage --period previous
   dfir-cli usage --period 2026-01 --service enrichment
@@ -48,9 +53,9 @@ the number of top operations shown.`,
 	_ = cmd.RegisterFlagCompletionFunc("period", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"current", "previous"}, cobra.ShellCompDirectiveNoFileComp
 	})
-	flags.StringVar(&flagService, "service", "", "Filter by service: phishing, exposure, enrichment")
+	flags.StringVar(&flagService, "service", "", "Filter by service: phishing, exposure, enrichment, ai")
 	_ = cmd.RegisterFlagCompletionFunc("service", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"phishing", "exposure", "enrichment"}, cobra.ShellCompDirectiveNoFileComp
+		return []string{"phishing", "exposure", "enrichment", "ai"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	flags.IntVar(&flagTop, "top", 10, "Number of top operations to display")
 
@@ -61,22 +66,12 @@ func runUsage(cmd *cobra.Command, period, service string, top int) error {
 	// Validate --service if provided.
 	if service != "" {
 		switch strings.ToLower(service) {
-		case "phishing", "exposure", "enrichment":
+		case "phishing", "exposure", "enrichment", "ai":
 			// OK
 		default:
-			return fmt.Errorf("invalid service %q. Valid services: phishing, exposure, enrichment", service)
+			return fmt.Errorf("invalid service %q. Valid services: phishing, exposure, enrichment, ai", service)
 		}
 	}
-
-	// Create API client.
-	apiClient, err := newAPIClient()
-	if err != nil {
-		return err
-	}
-
-	// Set up a cancellable context for signal handling.
-	ctx, cancel := signalContext()
-	defer cancel()
 
 	// Determine output format.
 	format, err := output.ParseFormat(GetOutputFormat())
@@ -84,24 +79,9 @@ func runUsage(cmd *cobra.Command, period, service string, top int) error {
 		return err
 	}
 
-	spin := output.NewSpinner("Fetching usage statistics...")
-	output.StartSpinner(spin)
-
-	req := &client.UsageRequest{
-		Period:  period,
-		Service: service,
-	}
-
-	result, resp, apiErr := apiClient.Usage(ctx, req)
-	output.StopSpinner(spin)
-
-	if apiErr != nil {
-		return apiErr
-	}
-
-	// Persist credit state for the credits command.
-	if resp != nil {
-		_ = SaveCreditState(&resp.Meta)
+	result, err := buildUsageResponse(period, service)
+	if err != nil {
+		return err
 	}
 
 	// Truncate top operations if requested.
@@ -114,9 +94,9 @@ func runUsage(cmd *cobra.Command, period, service string, top int) error {
 	case IsQuiet():
 		return renderUsageQuiet(cmd, result)
 	case format == output.FormatJSON:
-		return renderUsageJSON(result, resp)
+		return renderUsageJSON(result)
 	default:
-		return renderUsageTable(cmd, result, resp)
+		return renderUsageTable(cmd, result)
 	}
 }
 
@@ -124,39 +104,19 @@ func runUsage(cmd *cobra.Command, period, service string, top int) error {
 // Output: table
 // ---------------------------------------------------------------------------
 
-func renderUsageTable(cmd *cobra.Command, result *client.UsageResponse, meta *client.Response) error {
+func renderUsageTable(cmd *cobra.Command, result *client.UsageResponse) error {
 	w := cmd.OutOrStdout()
 
 	// Header.
-	fmt.Fprintf(w, "\nAPI Usage (%s)\n\n", result.Period)
+	fmt.Fprintf(w, "\nLocal API Usage (%s)\n\n", result.Period)
 	fmt.Fprintf(w, "  Total Requests:  %s\n", formatNumber(result.TotalRequests))
 	fmt.Fprintf(w, "  Total Credits:   %s\n", formatNumber(result.TotalCredits))
+	fmt.Fprintln(w, "  Source:          locally recorded dfir-cli activity")
 
 	// By-service breakdown.
 	if len(result.ByService) > 0 {
 		fmt.Fprintf(w, "\n  By Service:\n")
-
-		t := output.NewTable()
-		t.SetOutputMirror(w)
-		t.AppendHeader(table.Row{"Service", "Requests", "Credits"})
-
-		// Sort services for deterministic output.
-		services := make([]string, 0, len(result.ByService))
-		for svc := range result.ByService {
-			services = append(services, svc)
-		}
-		sort.Strings(services)
-
-		for _, svc := range services {
-			usage := result.ByService[svc]
-			t.AppendRow(table.Row{
-				titleCase(svc),
-				formatNumber(usage.Requests),
-				formatNumber(usage.Credits),
-			})
-		}
-
-		t.Render()
+		renderUsageByServiceTable(w, result.ByService)
 	}
 
 	// Top operations.
@@ -178,11 +138,9 @@ func renderUsageTable(cmd *cobra.Command, result *client.UsageResponse, meta *cl
 
 		t.Render()
 	}
-
-	// Credits footer.
-	if meta != nil {
+	if result.TotalRequests == 0 {
 		fmt.Fprintln(w)
-		output.PrintCreditsFooter(meta.Meta.CreditsUsed, meta.Meta.CreditsRemaining)
+		fmt.Fprintln(w, "  No locally recorded API usage for this period yet.")
 	}
 
 	return nil
@@ -192,17 +150,8 @@ func renderUsageTable(cmd *cobra.Command, result *client.UsageResponse, meta *cl
 // Output: JSON
 // ---------------------------------------------------------------------------
 
-func renderUsageJSON(result *client.UsageResponse, meta *client.Response) error {
-	payload := struct {
-		*client.UsageResponse
-		Meta *client.ResponseMeta `json:"meta,omitempty"`
-	}{
-		UsageResponse: result,
-	}
-	if meta != nil {
-		payload.Meta = &meta.Meta
-	}
-	return output.PrintJSON(payload)
+func renderUsageJSON(result *client.UsageResponse) error {
+	return output.PrintJSON(result)
 }
 
 // ---------------------------------------------------------------------------
@@ -240,15 +189,50 @@ func formatNumber(n int) string {
 }
 
 // renderUsageJSONRaw is a helper for tests that returns JSON bytes.
-func renderUsageJSONRaw(result *client.UsageResponse, meta *client.Response) ([]byte, error) {
-	payload := struct {
-		*client.UsageResponse
-		Meta *client.ResponseMeta `json:"meta,omitempty"`
-	}{
-		UsageResponse: result,
+func renderUsageJSONRaw(result *client.UsageResponse) ([]byte, error) {
+	return json.MarshalIndent(result, "", "  ")
+}
+
+func renderUsageByServiceTable(w io.Writer, byService map[string]client.ServiceUsage) {
+	t := output.NewTable()
+	t.SetOutputMirror(w)
+	t.AppendHeader(table.Row{"Service", "Requests", "Credits"})
+
+	services := make([]string, 0, len(byService))
+	for svc := range byService {
+		services = append(services, svc)
 	}
-	if meta != nil {
-		payload.Meta = &meta.Meta
+	sort.Strings(services)
+
+	for _, svc := range services {
+		usage := byService[svc]
+		t.AppendRow(table.Row{
+			titleCase(svc),
+			formatNumber(usage.Requests),
+			formatNumber(usage.Credits),
+		})
 	}
-	return json.MarshalIndent(payload, "", "  ")
+
+	t.Render()
+}
+
+func resolveUsagePeriod(input string) (string, string, error) {
+	now := usageNow().UTC()
+	switch input {
+	case "", "current":
+		return now.Format("2006-01"), now.Format("January 2006"), nil
+	case "previous":
+		previous := now.AddDate(0, -1, 0)
+		return previous.Format("2006-01"), previous.Format("January 2006"), nil
+	default:
+		parsed, err := time.Parse("2006-01", input)
+		if err != nil {
+			return "", "", fmt.Errorf("invalid period %q. Use current, previous, or YYYY-MM", input)
+		}
+		return parsed.Format("2006-01"), parsed.Format("January 2006"), nil
+	}
+}
+
+var usageNow = func() time.Time {
+	return time.Now().UTC()
 }

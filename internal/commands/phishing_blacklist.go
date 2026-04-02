@@ -75,7 +75,7 @@ func runPhishingBlacklist(ipFlag, batchFlag string) error {
 
 	// Persist credit state.
 	if resp != nil {
-		_ = SaveCreditState(&resp.Meta)
+		_ = SaveAPIState(&resp.Meta, "phishing", "blacklist")
 	}
 
 	switch {

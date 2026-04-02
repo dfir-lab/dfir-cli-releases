@@ -76,7 +76,7 @@ func runPhishingGeoIP(ipFlag, batchFlag string) error {
 	}
 
 	if resp != nil {
-		_ = SaveCreditState(&resp.Meta)
+		_ = SaveAPIState(&resp.Meta, "phishing", "geoip")
 	}
 
 	switch format {

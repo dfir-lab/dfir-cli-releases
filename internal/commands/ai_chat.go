@@ -2,6 +2,8 @@ package commands
 
 import (
 	"bufio"
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -51,7 +53,7 @@ Requires a Starter, Professional, or Enterprise plan.`,
 // runChatREPL runs the interactive chat read-eval-print loop. It maintains
 // conversation history in memory and streams responses from the AI API.
 func runChatREPL(model string) error {
-	c, err := newAPIClient()
+	c, err := newAIClient()
 	if err != nil {
 		return err
 	}
@@ -69,6 +71,7 @@ func runChatREPL(model string) error {
 
 	// Conversation history kept in memory for the duration of the session.
 	history := make([]client.AIChatMessage, 0, 32)
+	const maxHistoryTurns = 40
 
 	scanner := bufio.NewScanner(os.Stdin)
 	// Increase scanner buffer for long inputs (up to 1 MB).
@@ -102,6 +105,21 @@ func runChatREPL(model string) error {
 			}
 		}
 
+		if response, ok := localAIIdentityDisclosureResponse(input); ok {
+			history = append(history,
+				client.AIChatMessage{Role: "user", Content: input},
+				client.AIChatMessage{Role: "assistant", Content: response},
+			)
+			if len(history) > maxHistoryTurns {
+				history = history[len(history)-maxHistoryTurns:]
+			}
+
+			fmt.Println()
+			fmt.Println(response)
+			fmt.Println()
+			continue
+		}
+
 		// Add user message to history.
 		history = append(history, client.AIChatMessage{
 			Role:    "user",
@@ -109,7 +127,6 @@ func runChatREPL(model string) error {
 		})
 
 		// Cap history to prevent unbounded context growth.
-		const maxHistoryTurns = 40
 		if len(history) > maxHistoryTurns {
 			history = history[len(history)-maxHistoryTurns:]
 		}
@@ -128,11 +145,10 @@ func runChatREPL(model string) error {
 		reader, err := c.AIChatStream(ctx, req)
 		if err != nil {
 			cancel()
-			fmt.Fprintln(os.Stderr)
-			handleAIError(err)
-			// Remove the failed user message from history.
-			history = history[:len(history)-1]
-			continue
+			if len(history) > 0 {
+				history = history[:len(history)-1]
+			}
+			return handleAIChatREPLError(err)
 		}
 
 		// Stream the response to stdout.
@@ -146,6 +162,9 @@ func runChatREPL(model string) error {
 				fmt.Print(event.Text)
 				fullText.WriteString(event.Text)
 			case "done":
+				if event.Meta != nil {
+					_ = SaveAPIState(event.Meta, "ai", "chat")
+				}
 				fmt.Println()
 				if event.Usage != nil {
 					fmt.Println()
@@ -167,10 +186,15 @@ func runChatREPL(model string) error {
 		cancel()
 
 		if reader.Err() != nil {
-			fmt.Fprintf(os.Stderr, "  Error: %v\n\n", reader.Err())
 			// Remove the failed user message so it is not sent again.
 			history = history[:len(history)-1]
-			continue
+			if errors.Is(reader.Err(), context.Canceled) {
+				fmt.Println()
+				dim.Println("  Request cancelled.")
+				fmt.Println()
+				continue
+			}
+			return handleAIChatREPLError(reader.Err())
 		}
 
 		// Add assistant response to history for multi-turn context.
@@ -183,6 +207,20 @@ func runChatREPL(model string) error {
 	}
 
 	return nil
+}
+
+func handleAIChatREPLError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) {
+		fmt.Println()
+		fmt.Fprintln(os.Stderr, "  Request cancelled.")
+		fmt.Println()
+		return nil
+	}
+	fmt.Fprintln(os.Stderr)
+	return handleAIError(err)
 }
 
 // handleChatCommand processes slash commands inside the REPL. It returns two

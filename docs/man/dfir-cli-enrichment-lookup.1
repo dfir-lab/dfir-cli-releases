@@ -1,0 +1,118 @@
+.nh
+.TH "DFIR-CLI" "1" "Apr 2026" "DFIR Lab" "DFIR CLI Manual"
+
+.SH NAME
+dfir-cli-enrichment-lookup - Enrich IOCs across threat intelligence providers
+
+
+.SH SYNOPSIS
+\fBdfir-cli enrichment lookup [flags]\fP
+
+
+.SH DESCRIPTION
+Look up indicators of compromise (IOCs) across multiple threat intelligence
+providers. Supports IPs, domains, URLs, hashes, and email addresses.
+
+.PP
+Input can be supplied via typed flags, the generic --ioc flag, a batch file,
+or stdin.
+
+
+.SH OPTIONS
+\fB--batch\fP=""
+	File with one IOC per line (use - for stdin)
+
+.PP
+\fB--concurrency\fP=5
+	Parallel requests for batch mode (1-20)
+
+.PP
+\fB--domain\fP=""
+	Look up a domain
+
+.PP
+\fB--email\fP=""
+	Look up an email address
+
+.PP
+\fB--hash\fP=""
+	Look up a file hash
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for lookup
+
+.PP
+\fB--ioc\fP=""
+	Look up any IOC (auto-detect type)
+
+.PP
+\fB--ip\fP=""
+	Look up an IP address
+
+.PP
+\fB--min-score\fP=0
+	Only show providers above this score (0-100)
+
+.PP
+\fB--providers\fP=""
+	Comma-separated provider filter
+
+.PP
+\fB--type\fP=""
+	Force IOC type: ip, domain, url, hash, email
+
+.PP
+\fB--url\fP=""
+	Look up a URL
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
+\fB--api-key\fP=""
+	Override API key for this invocation
+
+.PP
+\fB--api-url\fP=""
+	Override API base URL (default from config)
+
+.PP
+\fB-j\fP, \fB--json\fP[=false]
+	Shorthand for --output json
+
+.PP
+\fB--no-color\fP[=false]
+	Disable colored output
+
+.PP
+\fB-o\fP, \fB--output\fP="table"
+	Output format: table, json, jsonl, csv
+
+.PP
+\fB-p\fP, \fB--profile\fP="default"
+	Named config profile
+
+.PP
+\fB-q\fP, \fB--quiet\fP[=false]
+	Minimal output
+
+.PP
+\fB--timeout\fP=1m0s
+	HTTP request timeout
+
+.PP
+\fB-v\fP, \fB--verbose\fP[=false]
+	Show debug information (HTTP requests/responses)
+
+
+.SH EXAMPLE
+.EX
+  dfir-cli enrichment lookup --ip 1.2.3.4
+  dfir-cli enrichment lookup --domain evil.com
+  dfir-cli enrichment lookup --ioc evil.com
+  dfir-cli enrichment lookup --batch iocs.txt --type ip
+  echo "1.2.3.4" | dfir-cli enrichment lookup --type ip
+.EE
+
+
+.SH SEE ALSO
+\fBdfir-cli-enrichment(1)\fP

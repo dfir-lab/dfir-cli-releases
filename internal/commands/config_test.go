@@ -402,4 +402,21 @@ func TestValidateAPIKeyWithPlatform(t *testing.T) {
 			t.Fatalf("expected nil error on transient failure, got %v", err)
 		}
 	})
+
+	t.Run("uses platform auth validation host", func(t *testing.T) {
+		t.Setenv("DFIR_LAB_API_URL", "https://dfir-lab.ch/api/v1")
+
+		var gotURL string
+		authValidateAPIKey = func(ctx context.Context, apiKey, apiURL string, timeout time.Duration, verbose bool) error {
+			gotURL = apiURL
+			return nil
+		}
+
+		if err := validateAPIKeyWithPlatform("sk-dfir-validformatkey12345"); err != nil {
+			t.Fatalf("expected nil error, got %v", err)
+		}
+		if gotURL != "https://platform.dfir-lab.ch/api/v1" {
+			t.Fatalf("auth validation apiURL = %q, want platform host", gotURL)
+		}
+	})
 }
