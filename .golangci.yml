@@ -1,4 +1,4 @@
-# golangci-lint configuration for dfir-cli
+# golangci-lint v2 configuration for dfir-cli
 # https://golangci-lint.run/usage/configuration/
 
 version: "2"
@@ -10,14 +10,12 @@ run:
 
 output:
   formats:
-    colored-line-number: {}
-  print-issued-lines: true
-  sort-results: true
+    - format: colored-line-number
   sort-order:
     - file
 
 linters:
-  disable-all: true
+  default: none
   enable:
     - errcheck
     - gosimple
@@ -32,39 +30,32 @@ linters:
     - gofmt
     - gocritic
     - unparam
-
-linters-settings:
-  govet:
-    enable-all: true
-
-  gosec:
-    excludes:
-      - G104 # Unhandled errors on deferred Close calls — too noisy
-
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-    disabled-checks:
-      - hugeParam
-      - rangeValCopy
-
-  misspell:
-    locale: US
-
-issues:
-  exclude-rules:
-    # Exclude gosec from test files — security checks on tests are noisy
-    - path: _test\.go
-      linters:
-        - gosec
-
-    # Exclude errcheck from test files — test assertions handle errors differently
-    - path: _test\.go
-      linters:
-        - errcheck
-
-    # Exclude unparam from test files — test helpers often have unused params
-    - path: _test\.go
-      linters:
-        - unparam
+  settings:
+    govet:
+      enable-all: true
+    gosec:
+      excludes:
+        - G104 # Unhandled errors on deferred Close calls — too noisy
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+      disabled-checks:
+        - hugeParam
+        - rangeValCopy
+    misspell:
+      locale: US
+  exclusions:
+    rules:
+      # Exclude gosec from test files — security checks on tests are noisy
+      - path: _test\.go
+        linters:
+          - gosec
+      # Exclude errcheck from test files — test assertions handle errors differently
+      - path: _test\.go
+        linters:
+          - errcheck
+      # Exclude unparam from test files — test helpers often have unused params
+      - path: _test\.go
+        linters:
+          - unparam
