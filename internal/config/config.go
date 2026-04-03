@@ -21,7 +21,7 @@ const (
 	configFileExt     = ".yaml"
 	defaultProfileKey = "default"
 
-	defaultAPIURL       = "https://dfir-lab.ch/api/v1"
+	defaultAPIURL       = "https://api.dfir-lab.ch/v1"
 	platformAPIURL      = "https://platform.dfir-lab.ch/api/v1"
 	aiDefaultAPIURL     = defaultAPIURL
 	authValidateAPIURL  = platformAPIURL
@@ -358,6 +358,17 @@ func NormalizeAPIURL(raw string) string {
 	}
 
 	raw = strings.TrimRight(raw, "/")
+
+	// Backward compat: rewrite old dfir-lab.ch/api/v1 → api.dfir-lab.ch/v1
+	const oldAPIURL = "https://dfir-lab.ch/api/v1"
+	if raw == oldAPIURL {
+		return defaultAPIURL
+	}
+	if strings.HasPrefix(raw, oldAPIURL+"/") {
+		return defaultAPIURL + strings.TrimPrefix(raw, oldAPIURL)
+	}
+
+	// Rewrite platform host → api host
 	if raw == platformAPIURL {
 		return defaultAPIURL
 	}
@@ -382,11 +393,15 @@ func NormalizeAuthValidateAPIURL(raw string) string {
 	}
 
 	raw = strings.TrimRight(raw, "/")
+
+	const oldAPIURL = "https://dfir-lab.ch/api/v1"
 	switch {
-	case raw == defaultAPIURL, raw == platformAPIURL:
+	case raw == defaultAPIURL, raw == platformAPIURL, raw == oldAPIURL:
 		return authValidateAPIURL
 	case strings.HasPrefix(raw, defaultAPIURL+"/"):
 		return authValidateAPIURL + strings.TrimPrefix(raw, defaultAPIURL)
+	case strings.HasPrefix(raw, oldAPIURL+"/"):
+		return authValidateAPIURL + strings.TrimPrefix(raw, oldAPIURL)
 	default:
 		return raw
 	}

@@ -404,7 +404,7 @@ func TestValidateAPIKeyWithPlatform(t *testing.T) {
 	})
 
 	t.Run("uses platform auth validation host", func(t *testing.T) {
-		t.Setenv("DFIR_LAB_API_URL", "https://dfir-lab.ch/api/v1")
+		t.Setenv("DFIR_LAB_API_URL", "https://api.dfir-lab.ch/v1")
 
 		var gotURL string
 		authValidateAPIKey = func(ctx context.Context, apiKey, apiURL string, timeout time.Duration, verbose bool) error {

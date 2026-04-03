@@ -120,11 +120,11 @@ func TestProfileCompletionCandidates_FromConfigFile(t *testing.T) {
 	configYAML := `active_profile: default
 profiles:
   default:
-    api_url: https://dfir-lab.ch/api/v1
+    api_url: https://api.dfir-lab.ch/v1
   staging:
     api_url: https://staging.dfir-lab.ch/api/v1
   prod:
-    api_url: https://api.dfir-lab.ch/api/v1
+    api_url: https://api.dfir-lab.ch/v1
 `
 	if err := os.WriteFile(filepath.Join(cfgDir, "config.yaml"), []byte(configYAML), 0600); err != nil {
 		t.Fatalf("write config.yaml: %v", err)

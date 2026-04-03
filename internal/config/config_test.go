@@ -15,8 +15,8 @@ import (
 func TestDefaultProfile(t *testing.T) {
 	p := DefaultProfile()
 
-	if p.APIURL != "https://dfir-lab.ch/api/v1" {
-		t.Errorf("APIURL = %q, want %q", p.APIURL, "https://dfir-lab.ch/api/v1")
+	if p.APIURL != "https://api.dfir-lab.ch/v1" {
+		t.Errorf("APIURL = %q, want %q", p.APIURL, "https://api.dfir-lab.ch/v1")
 	}
 	if p.OutputFormat != "table" {
 		t.Errorf("OutputFormat = %q, want %q", p.OutputFormat, "table")
@@ -157,17 +157,17 @@ func TestNormalizeAPIURL(t *testing.T) {
 		{
 			name: "empty uses current default",
 			in:   "",
-			want: "https://dfir-lab.ch/api/v1",
+			want: "https://api.dfir-lab.ch/v1",
 		},
 		{
 			name: "platform host downgrades to live api host",
 			in:   "https://platform.dfir-lab.ch/api/v1",
-			want: "https://dfir-lab.ch/api/v1",
+			want: "https://api.dfir-lab.ch/v1",
 		},
 		{
 			name: "platform path suffix downgrades to live api host",
 			in:   "https://platform.dfir-lab.ch/api/v1/ai/chat",
-			want: "https://dfir-lab.ch/api/v1/ai/chat",
+			want: "https://api.dfir-lab.ch/v1/ai/chat",
 		},
 		{
 			name: "custom endpoint unchanged",
@@ -194,17 +194,17 @@ func TestNormalizeAIAPIURL(t *testing.T) {
 		{
 			name: "empty uses ai default",
 			in:   "",
-			want: "https://dfir-lab.ch/api/v1",
+			want: "https://api.dfir-lab.ch/v1",
 		},
 		{
 			name: "platform default downgrades to ai host",
 			in:   "https://platform.dfir-lab.ch/api/v1",
-			want: "https://dfir-lab.ch/api/v1",
+			want: "https://api.dfir-lab.ch/v1",
 		},
 		{
 			name: "legacy host stays legacy",
-			in:   "https://dfir-lab.ch/api/v1",
-			want: "https://dfir-lab.ch/api/v1",
+			in:   "https://api.dfir-lab.ch/v1",
+			want: "https://api.dfir-lab.ch/v1",
 		},
 		{
 			name: "custom endpoint unchanged",
@@ -235,12 +235,12 @@ func TestNormalizeAuthValidateAPIURL(t *testing.T) {
 		},
 		{
 			name: "live api host upgrades to platform auth host",
-			in:   "https://dfir-lab.ch/api/v1",
+			in:   "https://api.dfir-lab.ch/v1",
 			want: "https://platform.dfir-lab.ch/api/v1",
 		},
 		{
 			name: "live api path suffix upgrades to platform auth host",
-			in:   "https://dfir-lab.ch/api/v1/auth/validate",
+			in:   "https://api.dfir-lab.ch/v1/auth/validate",
 			want: "https://platform.dfir-lab.ch/api/v1/auth/validate",
 		},
 		{
@@ -610,7 +610,7 @@ func TestLoadEmptyProfileUsesDefault(t *testing.T) {
 
 	original := &Profile{
 		APIKey:       "sk-dfir-emptyprofile12345",
-		APIURL:       "https://dfir-lab.ch/api/v1",
+		APIURL:       "https://api.dfir-lab.ch/v1",
 		OutputFormat: "table",
 		Timeout:      60 * time.Second,
 		Concurrency:  5,
@@ -911,7 +911,7 @@ func TestApplyDefaultsOnLoad(t *testing.T) {
 	}
 
 	// Defaults should be applied for zero-value fields.
-	if loaded.APIURL != "https://dfir-lab.ch/api/v1" {
+	if loaded.APIURL != "https://api.dfir-lab.ch/v1" {
 		t.Errorf("APIURL = %q, want default", loaded.APIURL)
 	}
 	if loaded.OutputFormat != "table" {
@@ -1257,7 +1257,7 @@ func TestApplyDefaults_ZeroValues(t *testing.T) {
 	}
 
 	// Check each default is applied.
-	if loaded.APIURL != "https://dfir-lab.ch/api/v1" {
+	if loaded.APIURL != "https://api.dfir-lab.ch/v1" {
 		t.Errorf("APIURL = %q, want default", loaded.APIURL)
 	}
 	if loaded.OutputFormat != "table" {

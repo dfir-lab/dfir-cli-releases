@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const defaultBaseURL = "https://dfir-lab.ch/api/v1"
+const defaultBaseURL = "https://api.dfir-lab.ch/v1"
 
 // ResponseMeta contains metadata returned by the API alongside every response.
 type ResponseMeta struct {

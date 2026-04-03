@@ -3,7 +3,7 @@
 **Document version:** 1.0
 **Date:** 2026-03-27
 **Tool under test:** dfir-cli (DFIR Lab CLI)
-**API endpoint:** https://dfir-lab.ch/api/v1
+**API endpoint:** https://api.dfir-lab.ch/v1
 
 ## Test Environment Prerequisites
 
@@ -127,7 +127,7 @@
 | 2 | Type your valid API key (e.g., `sk-dfir-abcdef1234567890xxxx`) and press Enter | Key is read without echo (hidden input on TTY). Output: "Configuration saved successfully! (profile: default)" followed by "Next steps" guidance. Exit code 0. |
 | 3 | Run `ls -la ~/.config/dfir-cli/config.yaml` | File exists with permissions `0600` (-rw-------). |
 | 4 | Run `ls -ld ~/.config/dfir-cli/` | Directory exists with permissions `0700` (drwx------). |
-| 5 | Run `cat ~/.config/dfir-cli/config.yaml` | YAML file contains `active_profile: default` and a `profiles.default` section with `api_key`, `api_url` (https://dfir-lab.ch/api/v1), `output_format` (table), `timeout` (1m0s), `concurrency` (5), `no_color` (false). |
+| 5 | Run `cat ~/.config/dfir-cli/config.yaml` | YAML file contains `active_profile: default` and a `profiles.default` section with `api_key`, `api_url` (https://api.dfir-lab.ch/v1), `output_format` (table), `timeout` (1m0s), `concurrency` (5), `no_color` (false). |
 
 **Pass criteria:** Config file created with correct permissions, correct defaults, and the API key stored.
 

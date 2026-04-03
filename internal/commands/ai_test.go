@@ -78,7 +78,7 @@ func TestHandleAIError_NotFound(t *testing.T) {
 	if !strings.Contains(stderr, "AI chat is not available on the configured DFIR Platform API endpoint") {
 		t.Fatalf("stderr missing AI availability message:\n%s", stderr)
 	}
-	if !strings.Contains(stderr, "https://dfir-lab.ch/api/v1") {
+	if !strings.Contains(stderr, "https://api.dfir-lab.ch/v1") {
 		t.Fatalf("stderr missing API URL:\n%s", stderr)
 	}
 }
